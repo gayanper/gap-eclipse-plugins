@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+   <extension
+         point="org.eclipse.recommenders.completion.rcp.sessionprocessors">
+      <processor
+            class="org.eclipse.recommenders.injection.ExtensionFactory:org.gap.eclipse.recommenders.types.TypesCompletionSessionProcessor"
+            enabledByDefault="false"
+            icon="icons/view16/sessionprocessor_types.png"
+            id="gap.eclipse.recommenders.types.processor.types"
+            name="Extended Subtypes-Completiion Processor">
+      </processor>
+   </extension>
+
+
+
+</plugin>
