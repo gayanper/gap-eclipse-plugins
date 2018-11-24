@@ -147,7 +147,6 @@
   </profiles>
   <modules>
     <module>gap.eclipse.recommenders.types</module>
-    <module>gap.eclipse.recommenders.test</module>
     <module>gap.eclipse.recommenders.feature</module>
     <module>gap.eclipse.recommenders.site</module>
   </modules>
