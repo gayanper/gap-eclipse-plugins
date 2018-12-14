@@ -26,6 +26,7 @@ import org.eclipse.recommenders.utils.names.Names;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableSet.Builder;
+import com.google.common.collect.Sets;
 
 public class TypesCompletionSessionProcessor extends SessionProcessor {
 	private static final CompletionProposal NULL_PROPOSAL = new CompletionProposal();
@@ -33,6 +34,9 @@ public class TypesCompletionSessionProcessor extends SessionProcessor {
 
 	private ImmutableSet<String> subtypes;
 	private final OverlayImageProposalProcessor overlayDecorator;
+
+  private Set<String> unsupportedTypes = Sets.newHashSet("Ljava/lang/Object", "Ljava/lang/Cloneable",
+      "Ljava/lang/Throwable", "Ljava/lang/Exception");
 
 	@Inject
 	public TypesCompletionSessionProcessor(SharedImages images) {
@@ -59,7 +63,7 @@ public class TypesCompletionSessionProcessor extends SessionProcessor {
 	}
 
 	private boolean isUnsupported(ITypeName typeName) {
-		return typeName.isArrayType() || typeName.isPrimitiveType();
+    return typeName.isArrayType() || typeName.isPrimitiveType() || unsupportedTypes.contains(typeName.getIdentifier());
 	}
 
 	private Iterable<? extends String> subtypes(ITypeName expected, IJavaProject project) {
