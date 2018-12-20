@@ -1,12 +1,21 @@
 package org.gap.eclipse.recommenders.types;
 
 
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import javax.inject.Inject;
 
+import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.NullProgressMonitor;
+import org.eclipse.core.runtime.Status;
+import org.eclipse.core.runtime.jobs.IJobFunction;
+import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.jdt.core.CompletionProposal;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IType;
@@ -63,20 +72,38 @@ public class TypesCompletionSessionProcessor extends SessionProcessor {
 	}
 
 	private boolean isUnsupported(ITypeName typeName) {
-    return typeName.isArrayType() || typeName.isPrimitiveType() || unsupportedTypes.contains(typeName.getIdentifier());
+		return typeName.isArrayType() || typeName.isPrimitiveType()
+				|| unsupportedTypes.contains(typeName.getIdentifier());
 	}
 
 	private Iterable<? extends String> subtypes(ITypeName expected, IJavaProject project) {
-		Set<String> result = new HashSet<>();
-		try {
-			IType type = project.findType(Names.vm2srcQualifiedType(expected));
-			IType[] subtypes = type.newTypeHierarchy(new NullProgressMonitor()).getAllSubtypes(type);
-			for (IType subtype : subtypes) {
-				result.add(subtype.getFullyQualifiedName());
+		final Set<String> result = Collections.synchronizedSet(new HashSet<>());
+		final JobFuture future = JobFuture.forJob(Job.create("TypesCompletionSessionProcessor", new IJobFunction() {
+			
+			@Override
+			public IStatus run(IProgressMonitor var1) {
+				try {
+					Set<String> interResults = new HashSet<>();
+					IType type = project.findType(Names.vm2srcQualifiedType(expected));
+					IType[] subtypes = type.newTypeHierarchy(new NullProgressMonitor()).getAllSubtypes(type);
+					for (IType subtype : subtypes) {
+						interResults.add(subtype.getFullyQualifiedName());
+					}
+					result.addAll(interResults);
+				} catch (JavaModelException e) {
+					TypesPlugin.getDefault().logError("Error while searching type hierarchy.", e);
+				}
+				return Status.OK_STATUS;
 			}
-		} catch (JavaModelException e) {
-			TypesPlugin.getDefault().log("Error while searching type hierarchy.", e);
+		}));
+		future.schedule();
+		try {
+			// if the search takes more than 3 seconds then return empty.
+			future.get(3000, TimeUnit.MILLISECONDS);
+		} catch (InterruptedException | TimeoutException | ExecutionException e) {
+			TypesPlugin.getDefault().logInfo("Skipping due to type heirarchy build.");
 		}
+		
 		return result;
 	}
 

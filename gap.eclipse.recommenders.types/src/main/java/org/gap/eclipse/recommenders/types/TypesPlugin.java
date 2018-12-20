@@ -64,7 +64,11 @@ public class TypesPlugin extends AbstractUIPlugin {
 		return imageDescriptorFromPlugin(PLUGIN_ID, path);
 	}
 
-	public void log(String message, Throwable t) {
+	public void logError(String message, Throwable t) {
 		getLog().log(new Status(IStatus.ERROR, PLUGIN_ID, message, t));
+	}
+
+	public void logInfo(String message) {
+		getLog().log(new Status(IStatus.INFO, PLUGIN_ID, message));
 	}
 }
