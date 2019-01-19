@@ -1,7 +1,7 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: gap.eclipse.recommenders Types Plugin
-Bundle-SymbolicName: gap.eclipse.recommenders.types;singleton:=true
+Bundle-SymbolicName: gap.eclipse.recommenders.core;singleton:=true
 Bundle-Version: 1.0.0.qualifier
 Bundle-Activator: org.gap.eclipse.recommenders.types.TypesPlugin
 Require-Bundle: org.eclipse.ui,

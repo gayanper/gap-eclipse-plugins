@@ -22,7 +22,7 @@
    </url>
 
    <plugin
-         id="gap.eclipse.recommenders.types"
+         id="gap.eclipse.recommenders.core"
          download-size="0"
          install-size="0"
          version="0.0.0"

@@ -3,7 +3,7 @@ Bundle-ManifestVersion: 2
 Bundle-Name: gap.eclipse.recommenders Test Fragment
 Bundle-SymbolicName: gap.eclipse.recommenders.test
 Bundle-Version: 1.0.0.qualifier
-Fragment-Host: gap.eclipse.recommenders.types;bundle-version="1.0.0"
+Fragment-Host: gap.eclipse.recommenders.core;bundle-version="1.0.0"
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Require-Bundle: org.eclipse.jdt.junit4.runtime;bundle-version="1.1.0",
  org.junit;bundle-version="4.11"

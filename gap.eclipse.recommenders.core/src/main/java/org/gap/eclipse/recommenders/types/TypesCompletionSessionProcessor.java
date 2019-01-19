@@ -12,7 +12,6 @@ import javax.inject.Inject;
 
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
-import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.IJobFunction;
 import org.eclipse.core.runtime.jobs.Job;
@@ -81,11 +80,11 @@ public class TypesCompletionSessionProcessor extends SessionProcessor {
 		final JobFuture future = JobFuture.forJob(Job.create("TypesCompletionSessionProcessor", new IJobFunction() {
 			
 			@Override
-			public IStatus run(IProgressMonitor var1) {
+			public IStatus run(IProgressMonitor monitor) {
 				try {
 					Set<String> interResults = new HashSet<>();
 					IType type = project.findType(Names.vm2srcQualifiedType(expected));
-					IType[] subtypes = type.newTypeHierarchy(new NullProgressMonitor()).getAllSubtypes(type);
+					IType[] subtypes = type.newTypeHierarchy(monitor).getAllClasses();
 					for (IType subtype : subtypes) {
 						interResults.add(subtype.getFullyQualifiedName());
 					}
@@ -99,7 +98,7 @@ public class TypesCompletionSessionProcessor extends SessionProcessor {
 		future.schedule();
 		try {
 			// if the search takes more than 3 seconds then return empty.
-			future.get(3000, TimeUnit.MILLISECONDS);
+			future.get(10000, TimeUnit.MILLISECONDS);
 		} catch (InterruptedException | TimeoutException | ExecutionException e) {
 			TypesPlugin.getDefault().logInfo("Skipping due to type heirarchy build.");
 		}
