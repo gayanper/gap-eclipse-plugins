@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.gap.eclipse.recommenders</groupId>
   <artifactId>gap.eclipse.recommenders</artifactId>
-  <version>1.0.0-SNAPSHOT</version>
+  <version>2.0.0-SNAPSHOT</version>
   <packaging>pom</packaging>
   <name>gap.eclipse.recommenders :: parent</name>
   <description>gap.eclipse.recommenders parent</description>
