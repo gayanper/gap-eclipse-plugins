@@ -1,16 +1,11 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
-Bundle-Name: gap.eclipse.recommenders Types Plugin
+Bundle-Name: gap.eclipse.recommenders Core Plugin
 Bundle-SymbolicName: gap.eclipse.recommenders.core;singleton:=true
 Bundle-Version: 1.0.0.qualifier
-Bundle-Activator: org.gap.eclipse.recommenders.types.TypesPlugin
+Bundle-Activator: org.gap.eclipse.recommenders.CorePlugin
 Require-Bundle: org.eclipse.ui,
  org.eclipse.core.runtime,
- org.eclipse.recommenders.completion.rcp;bundle-version="2.5.4",
- org.eclipse.recommenders.utils;bundle-version="2.5.4",
- org.eclipse.recommenders.jdt;bundle-version="2.5.4",
- org.eclipse.recommenders.rcp;bundle-version="2.5.4",
- org.eclipse.recommenders.injection;bundle-version="2.5.4",
  org.eclipse.jdt.core;bundle-version="3.15.0",
  org.eclipse.jdt.ui;bundle-version="3.15.0",
  org.eclipse.jface.text;bundle-version="3.14.0",

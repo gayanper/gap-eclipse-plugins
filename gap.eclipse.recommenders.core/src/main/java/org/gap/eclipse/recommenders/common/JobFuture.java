@@ -1,4 +1,4 @@
-package org.gap.eclipse.recommenders.types;
+package org.gap.eclipse.recommenders.common;
 
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;

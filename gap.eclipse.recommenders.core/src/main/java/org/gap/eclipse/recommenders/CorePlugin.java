@@ -1,4 +1,4 @@
-package org.gap.eclipse.recommenders.types;
+package org.gap.eclipse.recommenders;
 
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
@@ -9,19 +9,19 @@ import org.osgi.framework.BundleContext;
 /**
  * The activator class controls the plug-in life cycle
  */
-public class TypesPlugin extends AbstractUIPlugin {
+public class CorePlugin extends AbstractUIPlugin {
 
 	// The plug-in ID
 	public static final String PLUGIN_ID = "gap.eclipse.recommenders.core";
 
 	// The shared instance
-	private static TypesPlugin plugin;
+	private static CorePlugin plugin;
 	
 	boolean started;
 	/**
 	 * The constructor
 	 */
-	public TypesPlugin() {
+	public CorePlugin() {
 	}
 
 	/*
@@ -49,7 +49,7 @@ public class TypesPlugin extends AbstractUIPlugin {
 	 *
 	 * @return the shared instance
 	 */
-	public static TypesPlugin getDefault() {
+	public static CorePlugin getDefault() {
 		return plugin;
 	}
 
