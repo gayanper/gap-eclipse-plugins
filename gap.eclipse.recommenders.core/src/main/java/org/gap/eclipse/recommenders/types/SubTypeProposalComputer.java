@@ -153,7 +153,7 @@ public class SubTypeProposalComputer implements IJavaCompletionProposalComputer 
 
 	@Override
 	public String getErrorMessage() {
-		return "Error occurred while looking subtypes";
+		return null;
 	}
 
 	@Override
