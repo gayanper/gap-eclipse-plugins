@@ -9,7 +9,8 @@ Require-Bundle: org.eclipse.ui,
  org.eclipse.jdt.core;bundle-version="3.15.0",
  org.eclipse.jdt.ui;bundle-version="3.15.0",
  org.eclipse.jface.text;bundle-version="3.14.0",
- com.google.guava
+ com.google.guava,
+ org.eclipse.core.resources;bundle-version="3.13.400"
 Bundle-ActivationPolicy: lazy
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Import-Package: com.google.common.base;version="15.0.0",
