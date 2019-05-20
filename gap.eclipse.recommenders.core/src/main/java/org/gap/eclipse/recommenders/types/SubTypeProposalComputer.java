@@ -61,6 +61,9 @@ import com.google.common.collect.Sets;
 
 @SuppressWarnings("restriction")
 public class SubTypeProposalComputer implements IJavaCompletionProposalComputer {
+	// TODO: this class need heavy refactoring after testing the current
+	// implementation.
+
 	private static final String CATEGORY_ID = "gap.eclipse.recommenders.proposalCategory.subType";
 	private Set<String> unsupportedTypes = Sets.newHashSet("java.lang.Object", "java.lang.Cloneable",
 			"java.lang.Throwable", "java.lang.Exception");
