@@ -78,8 +78,13 @@ public class SubTypeProposalComputer implements IJavaCompletionProposalComputer 
 			IProgressMonitor monitor) {
 		if (context instanceof JavaContentAssistInvocationContext) {
 			if (((JavaContentAssistInvocationContext) context).getExpectedType() != null) {
-				return searchForSubTypeProposals(((JavaContentAssistInvocationContext) context).getExpectedType(),
-						(JavaContentAssistInvocationContext) context, monitor);
+				IType expectedType = ((JavaContentAssistInvocationContext) context).getExpectedType();
+				Builder<ICompletionProposal> builder = ImmutableList.<ICompletionProposal>builder();
+				builder.addAll(
+						searchForStaticProposals(expectedType, (JavaContentAssistInvocationContext) context, monitor));
+				builder.addAll(searchForSubTypeProposals(expectedType,
+						(JavaContentAssistInvocationContext) context, monitor));
+				return builder.build();
 			} else {
 				return searchFromAST((JavaContentAssistInvocationContext) context, monitor);
 			}
