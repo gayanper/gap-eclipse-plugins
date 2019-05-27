@@ -41,6 +41,7 @@ import org.eclipse.jdt.core.search.SearchMatch;
 import org.eclipse.jdt.core.search.SearchParticipant;
 import org.eclipse.jdt.core.search.SearchPattern;
 import org.eclipse.jdt.core.search.SearchRequestor;
+import org.eclipse.jdt.internal.core.search.JavaSearchScope;
 import org.eclipse.jdt.internal.ui.text.java.LazyGenericTypeProposal;
 import org.eclipse.jdt.internal.ui.text.java.LazyJavaTypeCompletionProposal;
 import org.eclipse.jdt.ui.PreferenceConstants;
@@ -152,7 +153,10 @@ public class SubTypeProposalComputer implements IJavaCompletionProposalComputer 
 
 					engine.search(pattern,
 							new SearchParticipant[] { SearchEngine.getDefaultSearchParticipant() },
-							SearchEngine.createWorkspaceScope(), new SearchRequestor() {
+							SearchEngine.createJavaSearchScope(new IJavaElement[] { context.getProject() },
+									JavaSearchScope.REFERENCED_PROJECTS | JavaSearchScope.APPLICATION_LIBRARIES
+											| JavaSearchScope.SYSTEM_LIBRARIES | JavaSearchScope.SOURCES),
+							new SearchRequestor() {
 
 								@Override
 								public void acceptSearchMatch(SearchMatch match) throws CoreException {
@@ -173,8 +177,8 @@ public class SubTypeProposalComputer implements IJavaCompletionProposalComputer 
 		}));
 		future.schedule();
 		try {
-			// if the search takes more than 3 seconds then return empty.
-			future.get(2000, TimeUnit.MILLISECONDS);
+			// if the search takes more than 4 seconds then return empty.
+			future.get(10000, TimeUnit.MILLISECONDS);
 		} catch (InterruptedException | TimeoutException | ExecutionException e) {
 			CorePlugin.getDefault().logInfo("Skipping due to type heirarchy build.");
 		}
@@ -213,7 +217,7 @@ public class SubTypeProposalComputer implements IJavaCompletionProposalComputer 
 				Signature.createTypeSignature(field.getDeclaringType().getFullyQualifiedName(), true).toCharArray());
 		proposal.setFlags(field.getFlags());
 		float relevance = context.getHistoryRelevance(fullyQualifiedName);
-		proposal.setRelevance((int) (100 * (relevance < 0.1 ? 0.1 : relevance)));
+		proposal.setRelevance((int) (50 * (relevance < 0.1 ? 0.1 : relevance)));
 		proposal.setReplaceRange(context.getInvocationOffset(), context.getInvocationOffset());
 		proposal.setSignature(field.getTypeSignature().toCharArray());
 		proposal.setRequiredProposals(
@@ -242,7 +246,7 @@ public class SubTypeProposalComputer implements IJavaCompletionProposalComputer 
 		float relevance = context.getHistoryRelevance(fullyQualifiedName);
 		proposal.setRelevance((int) (100 * (relevance < 0.1 ? 0.1 : relevance)));
 		proposal.setReplaceRange(context.getInvocationOffset(), context.getInvocationOffset());
-		proposal.setSignature(method.getSignature().toCharArray());
+		proposal.setSignature(method.getSignature().replaceAll("/", ".").toCharArray());
 		proposal.setRequiredProposals(
 				new CompletionProposal[] { createImportProposal(context, method.getDeclaringType()) });
 
@@ -254,12 +258,13 @@ public class SubTypeProposalComputer implements IJavaCompletionProposalComputer 
 		return collector.getJavaCompletionProposals()[0];
 	}
 
-	private char[] createMethodCompletion(IMethod method) {
+	private char[] createMethodCompletion(IMethod method) throws JavaModelException {
 		StringBuilder builder = new StringBuilder();
 		builder.append(method.getDeclaringType().getElementName());
 		builder.append(".").append(method.getElementName());
 		builder.append("(");
-		builder.append(Arrays.stream(method.getParameterTypes()).map(n -> Signature.getSimpleName(n).toLowerCase()).collect(Collectors.joining(",")));
+		builder.append(Arrays.stream(method.getParameterNames())
+				.collect(Collectors.joining(",")));
 		builder.append(")");
 		return builder.toString().toCharArray();
 	}
