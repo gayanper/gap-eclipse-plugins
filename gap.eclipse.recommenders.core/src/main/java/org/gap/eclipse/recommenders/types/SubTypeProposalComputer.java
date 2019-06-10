@@ -49,6 +49,7 @@ import org.eclipse.jdt.ui.text.java.CompletionProposalCollector;
 import org.eclipse.jdt.ui.text.java.ContentAssistInvocationContext;
 import org.eclipse.jdt.ui.text.java.IJavaCompletionProposalComputer;
 import org.eclipse.jdt.ui.text.java.JavaContentAssistInvocationContext;
+import org.eclipse.jface.text.BadLocationException;
 import org.eclipse.jface.text.contentassist.ICompletionProposal;
 import org.eclipse.jface.text.contentassist.IContextInformation;
 import org.gap.eclipse.recommenders.CorePlugin;
@@ -66,8 +67,8 @@ public class SubTypeProposalComputer implements IJavaCompletionProposalComputer 
 	// implementation.
 
 	private static final String CATEGORY_ID = "gap.eclipse.recommenders.proposalCategory.subType";
-	private Set<String> unsupportedTypes = Sets.newHashSet("java.lang.Object", "java.lang.Cloneable",
-			"java.lang.Throwable", "java.lang.Exception");
+	private Set<String> unsupportedTypes = Sets.newHashSet("java.lang.String", "java.lang.Object",
+			"java.lang.Cloneable", "java.lang.Throwable", "java.lang.Exception");
 
 	@Override
 	public void sessionStarted() {
@@ -109,11 +110,10 @@ public class SubTypeProposalComputer implements IJavaCompletionProposalComputer 
 		parser.setStatementsRecovery(true);
 		parser.setBindingsRecovery(true);
 		ASTNode ast = parser.createAST(monitor);
-		CompletionASTVistor visitor = new CompletionASTVistor(context.getInvocationOffset(), context.getProject());
+		CompletionASTVistor visitor = new CompletionASTVistor(context);
 		ast.accept(visitor);
-
 		final IType expectedType = visitor.getExpectedType();
-		if (expectedType == null) {
+		if (expectedType == null || unsupportedTypes.contains(expectedType.getFullyQualifiedName())) {
 			return Collections.emptyList();
 		}
 
@@ -415,10 +415,16 @@ public class SubTypeProposalComputer implements IJavaCompletionProposalComputer 
 		private int offset;
 		private IType expectedType;
 		private IJavaProject project;
+		private boolean preceedSpace = false;
 
-		public CompletionASTVistor(int offset, IJavaProject project) {
-			this.offset = offset;
-			this.project = project;
+		public CompletionASTVistor(JavaContentAssistInvocationContext context) {
+			this.offset = context.getInvocationOffset();
+			this.project = context.getProject();
+			try {
+				preceedSpace = context.getDocument().get(offset - 1, 1).equals(" ");
+			} catch (BadLocationException e) {
+				CorePlugin.getDefault().logError(e.getMessage(), e);
+			}
 		}
 
 		@Override
@@ -447,11 +453,12 @@ public class SubTypeProposalComputer implements IJavaCompletionProposalComputer 
 			@SuppressWarnings("unchecked")
 			final List<Object> arguments = node.arguments();
 			int typeIndex = -1;
+			int checkOffset = preceedSpace ? offset - 1 : offset;
 
 			for (int i = 0; i < arguments.size(); i++) {
 				final ASTNode astNode = (ASTNode) arguments.get(i);
-				if (astNode.getStartPosition() <= offset
-						&& (astNode.getStartPosition() + astNode.getLength()) >= offset) {
+				if (astNode.getStartPosition() <= checkOffset
+						&& (astNode.getStartPosition() + astNode.getLength()) >= checkOffset) {
 					typeIndex = i;
 					break;
 				}
