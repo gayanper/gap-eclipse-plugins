@@ -3,7 +3,4 @@
    <feature url="features/gap.eclipse.recommenders.feature_0.0.0.jar" id="gap.eclipse.recommenders.feature" version="0.0.0">
     <category name="gap.eclipse.recommenders"/>
    </feature>
-   <feature url="features/gap.eclipse.recommenders.feature.source_0.0.0.jar" id="gap.eclipse.recommenders.feature.source" version="0.0.0">
-    <category name="gap.eclipse.recommenders Developer Resources"/>
-   </feature>
 </site>
