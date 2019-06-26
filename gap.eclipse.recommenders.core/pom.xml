@@ -28,7 +28,7 @@
 				<executions>
 					<execution>
 						<id>copy-reactor-lib</id>
-						<phase>prepare-package</phase>
+						<phase>process-sources</phase>
 						<goals>
 							<goal>copy-dependencies</goal>
 						</goals>
