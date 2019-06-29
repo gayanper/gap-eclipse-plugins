@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feature
+      id="gap.eclipse.jdt.feature"
+      label="gap.eclipse.jdt Feature"
+      version="2.0.0.qualifier">
+
+   <description url="http://www.example.com/description">
+      [Enter Feature Description here.]
+   </description>
+
+   <copyright url="http://www.example.com/copyright">
+      [Enter Copyright Description here.]
+   </copyright>
+
+   <license url="http://www.example.com/license">
+      [Enter License Description here.]
+   </license>
+
+   <url>
+      <update label="gap.eclipse.jdt Update Site" url="http://www.example.com/update"/>
+      <discovery label="gap.eclipse.jdt Discovery Site" url="http://www.example.com/update"/>
+   </url>
+
+   <plugin
+         id="gap.eclipse.jdt.core"
+         download-size="0"
+         install-size="0"
+         version="0.0.0"
+         unpack="false"/>
+
+</feature>
