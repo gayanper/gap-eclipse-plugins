@@ -22,5 +22,20 @@
                value="gap.eclipse.jdt.proposalCategory.subType">
          </parameter>
       </key>
+      <key
+            commandId="gap.eclipse.jdt.core.open"
+            contextId="org.eclipse.ui.contexts.dialogAndWindow"
+            schemeId="org.eclipse.ui.defaultAcceleratorConfiguration"
+            sequence="M2+M3+M1+S">
+      </key>
+   </extension>
+   <extension
+         point="org.eclipse.ui.commands">
+      <command
+            categoryId="org.eclipse.ui.category.navigate"
+            defaultHandler="org.gap.eclipse.jdt.symbol.OpenSymbolCommand"
+            id="gap.eclipse.jdt.core.open"
+            name="Open Symbol">
+      </command>
    </extension>
 </plugin>
