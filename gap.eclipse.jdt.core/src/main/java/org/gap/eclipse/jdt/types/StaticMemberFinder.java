@@ -152,7 +152,7 @@ public class StaticMemberFinder {
 		SearchPattern pattern = SearchPattern.createPattern(expectedType.getFullyQualifiedName(),
 				IJavaSearchConstants.TYPE,
 				IJavaSearchConstants.FIELD_DECLARATION_TYPE_REFERENCE | IJavaSearchConstants.RETURN_TYPE_REFERENCE,
-				SearchPattern.R_FULL_MATCH);
+				SearchPattern.R_EXACT_MATCH);
 
 		Job job = new Job("Static Member Search Caching") {
 
@@ -167,7 +167,7 @@ public class StaticMemberFinder {
 
 								@Override
 								public void acceptSearchMatch(SearchMatch match) throws CoreException {
-									if(!emitter.isCancelled()) {
+									if (!emitter.isCancelled() && (match.getAccuracy() == SearchMatch.A_ACCURATE)) {
 										emitter.next(match.getElement());
 									}
 								}

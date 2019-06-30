@@ -36,8 +36,6 @@ import org.gap.eclipse.jdt.common.DisableCategoryJob;
 
 import com.google.common.collect.Sets;
 
-import reactor.core.publisher.Flux;
-
 public class SubTypeProposalComputer implements IJavaCompletionProposalComputer {
 	// TODO: this class need heavy refactoring after testing the current
 	// implementation.
@@ -79,10 +77,8 @@ public class SubTypeProposalComputer implements IJavaCompletionProposalComputer 
 					.blockFirst();
 
 		} else {
-			return Flux
-					.<ICompletionProposal>merge(subTypeFinder.find(expectedType, context, monitor),
-							staticMemberFinder.find(expectedType, context, monitor))
-					.bufferTimeout(100, Duration.ofSeconds(3)).blockFirst();
+			return staticMemberFinder.find(expectedType, context, monitor).bufferTimeout(100, Duration.ofSeconds(4))
+					.blockFirst();
 		}
 	}
 
