@@ -34,6 +34,7 @@ import org.eclipse.jface.text.contentassist.IContextInformation;
 import org.gap.eclipse.jdt.CorePlugin;
 import org.gap.eclipse.jdt.common.DisableCategoryJob;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Sets;
 
 public class SubTypeProposalComputer implements IJavaCompletionProposalComputer {
@@ -46,6 +47,8 @@ public class SubTypeProposalComputer implements IJavaCompletionProposalComputer 
 
 	private StaticMemberFinder staticMemberFinder = new StaticMemberFinder();
 	private SubTypeFinder subTypeFinder = new SubTypeFinder();
+
+	private final static long TIMEOUT = Long.getLong("org.gap.jdt.core.smart_timeout", 4500);
 
 	@Override
 	public void sessionStarted() {
@@ -72,13 +75,22 @@ public class SubTypeProposalComputer implements IJavaCompletionProposalComputer 
 
 	private List<ICompletionProposal> completionList(IProgressMonitor monitor,
 			JavaContentAssistInvocationContext context, IType expectedType) {
-		if (isPreceedSpaceNewKeyword(context)) {
-			return subTypeFinder.find(expectedType, context, monitor).bufferTimeout(100, Duration.ofSeconds(3))
-					.blockFirst();
+		final Duration duration = Duration.ofMillis(TIMEOUT);
+		final Duration blockDuration = duration.plusMillis(100);
+		try {
+			if (isPreceedSpaceNewKeyword(context)) {
+				return subTypeFinder.find(expectedType, context, monitor).bufferTimeout(100, duration)
+						.blockFirst(blockDuration);
 
-		} else {
-			return staticMemberFinder.find(expectedType, context, monitor).bufferTimeout(100, Duration.ofSeconds(4))
-					.blockFirst();
+			} else {
+				return staticMemberFinder.find(expectedType, context, monitor).bufferTimeout(100, duration)
+						.blockFirst(blockDuration);
+			}
+		} catch (IllegalStateException e) {
+			CorePlugin.getDefault().logError(e.getMessage(), e);
+			// handle timeout
+			return ImmutableList.of(new ComputingProposal(context.getInvocationOffset(), "Searching ..."),
+					new ComputingProposal(context.getInvocationOffset(), "Timed out try again"));
 		}
 	}
 

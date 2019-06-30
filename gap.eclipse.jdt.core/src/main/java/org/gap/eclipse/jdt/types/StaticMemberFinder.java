@@ -179,14 +179,14 @@ public class StaticMemberFinder {
 
 							}, monitor);
 				} catch (CoreException e) {
-					if(emitter.isCancelled()) {
+					if (!emitter.isCancelled()) {
 						emitter.error(e);
 					}
 				}
 				return Status.OK_STATUS;
 			}
 		};
-		job.setPriority(Job.LONG);
+		job.setPriority(Job.INTERACTIVE);
 		job.schedule();
 	}
 }
