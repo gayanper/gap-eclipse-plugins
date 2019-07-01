@@ -48,7 +48,7 @@ public class SubTypeProposalComputer implements IJavaCompletionProposalComputer 
 	private StaticMemberFinder staticMemberFinder = new StaticMemberFinder();
 	private SubTypeFinder subTypeFinder = new SubTypeFinder();
 
-	private final static long TIMEOUT = Long.getLong("org.gap.jdt.core.smart_timeout", 4500);
+	private final static long TIMEOUT = Long.getLong("org.eclipse.jdt.ui.codeAssistTimeout", 5000);
 
 	@Override
 	public void sessionStarted() {
@@ -75,8 +75,8 @@ public class SubTypeProposalComputer implements IJavaCompletionProposalComputer 
 
 	private List<ICompletionProposal> completionList(IProgressMonitor monitor,
 			JavaContentAssistInvocationContext context, IType expectedType) {
-		final Duration duration = Duration.ofMillis(TIMEOUT);
-		final Duration blockDuration = duration.plusMillis(100);
+		final Duration duration = Duration.ofMillis(TIMEOUT).minusMillis(100);
+		final Duration blockDuration = duration.plusMillis(50);
 		try {
 			if (isPreceedSpaceNewKeyword(context)) {
 				return subTypeFinder.find(expectedType, context, monitor).bufferTimeout(100, duration)
