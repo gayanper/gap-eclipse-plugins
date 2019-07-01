@@ -75,15 +75,14 @@ public class SubTypeProposalComputer implements IJavaCompletionProposalComputer 
 
 	private List<ICompletionProposal> completionList(IProgressMonitor monitor,
 			JavaContentAssistInvocationContext context, IType expectedType) {
-		final Duration duration = Duration.ofMillis(TIMEOUT).minusMillis(100);
-		final Duration blockDuration = duration.plusMillis(50);
+		final Duration blockDuration = Duration.ofMillis(TIMEOUT).minusMillis(1000);
 		try {
 			if (isPreceedSpaceNewKeyword(context)) {
-				return subTypeFinder.find(expectedType, context, monitor).bufferTimeout(100, duration)
+				return subTypeFinder.find(expectedType, context, monitor).buffer(100)
 						.blockFirst(blockDuration);
 
 			} else {
-				return staticMemberFinder.find(expectedType, context, monitor).bufferTimeout(100, duration)
+				return staticMemberFinder.find(expectedType, context, monitor).buffer(100)
 						.blockFirst(blockDuration);
 			}
 		} catch (IllegalStateException e) {

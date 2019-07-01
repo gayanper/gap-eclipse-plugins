@@ -28,7 +28,6 @@ import org.eclipse.jdt.ui.text.java.CompletionProposalCollector;
 import org.eclipse.jdt.ui.text.java.JavaContentAssistInvocationContext;
 import org.eclipse.jface.text.contentassist.ICompletionProposal;
 import org.gap.eclipse.jdt.CorePlugin;
-import org.gap.eclipse.jdt.common.SearchEngineCache;
 
 import com.google.common.base.Predicates;
 
@@ -148,7 +147,7 @@ public class StaticMemberFinder {
 
 	private void performSearch(FluxSink<Object> emitter, IType expectedType, JavaContentAssistInvocationContext context,
 			IProgressMonitor parentMonitor) {
-		SearchEngine engine = SearchEngineCache.SEARCH_ENGINE;
+		SearchEngine engine = new SearchEngine();
 		SearchPattern pattern = SearchPattern.createPattern(expectedType.getFullyQualifiedName(),
 				IJavaSearchConstants.TYPE,
 				IJavaSearchConstants.FIELD_DECLARATION_TYPE_REFERENCE | IJavaSearchConstants.RETURN_TYPE_REFERENCE,
