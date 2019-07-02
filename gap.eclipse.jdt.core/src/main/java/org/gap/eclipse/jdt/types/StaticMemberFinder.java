@@ -1,7 +1,14 @@
 package org.gap.eclipse.jdt.types;
 
+import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
@@ -31,15 +38,12 @@ import org.gap.eclipse.jdt.CorePlugin;
 
 import com.google.common.base.Predicates;
 
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.FluxSink;
-
 @SuppressWarnings("restriction")
 public class StaticMemberFinder {
 
-	public Flux<ICompletionProposal> find(final IType expectedType, JavaContentAssistInvocationContext context,
-			IProgressMonitor monitor) {
-		return Flux.create(e -> performSearch(e, expectedType, context, monitor))
+	public Stream<ICompletionProposal> find(final IType expectedType, JavaContentAssistInvocationContext context,
+			IProgressMonitor monitor, Duration timeout) {
+		return performSearch(expectedType, context, monitor, timeout)
 				.map(o -> (IMember) o)
 				.filter(this::onlyPublicStatic).map(m -> toCompletionProposal(m, context, monitor))
 				.filter(Predicates.notNull());
@@ -145,13 +149,17 @@ public class StaticMemberFinder {
 		}
 	}
 
-	private void performSearch(FluxSink<Object> emitter, IType expectedType, JavaContentAssistInvocationContext context,
-			IProgressMonitor parentMonitor) {
+	private Stream<Object> performSearch(IType expectedType,
+			JavaContentAssistInvocationContext context,
+			IProgressMonitor parentMonitor, Duration timeout) {
 		SearchEngine engine = new SearchEngine();
 		SearchPattern pattern = SearchPattern.createPattern(expectedType.getFullyQualifiedName(),
 				IJavaSearchConstants.TYPE,
 				IJavaSearchConstants.FIELD_DECLARATION_TYPE_REFERENCE | IJavaSearchConstants.RETURN_TYPE_REFERENCE,
 				SearchPattern.R_EXACT_MATCH);
+
+		final List<Object> resultAccumerlator = Collections.synchronizedList(new ArrayList<>());
+		final CountDownLatch waiter = new CountDownLatch(1);
 
 		Job job = new Job("Static Member Search Caching") {
 
@@ -166,26 +174,31 @@ public class StaticMemberFinder {
 
 								@Override
 								public void acceptSearchMatch(SearchMatch match) throws CoreException {
-									if (!emitter.isCancelled() && (match.getAccuracy() == SearchMatch.A_ACCURATE)) {
-										emitter.next(match.getElement());
+									if (match.getAccuracy() == SearchMatch.A_ACCURATE) {
+										resultAccumerlator.add(match.getElement());
 									}
 								}
 
 								@Override
 								public void endReporting() {
-									emitter.complete();
+									waiter.countDown();
 								}
 
 							}, monitor);
 				} catch (CoreException e) {
-					if (!emitter.isCancelled()) {
-						emitter.error(e);
-					}
+					CorePlugin.getDefault().logError(e.getMessage(), e);
+					waiter.countDown();
 				}
 				return Status.OK_STATUS;
 			}
 		};
 		job.setPriority(Job.INTERACTIVE);
 		job.schedule();
+		try {
+			waiter.await(timeout.toMillis(), TimeUnit.MILLISECONDS);
+		} catch (InterruptedException e) {
+			CorePlugin.getDefault().logError(e.getMessage(), e);
+		}
+		return new ArrayList<>(resultAccumerlator).stream(); // copy and create the stream.
 	}
 }

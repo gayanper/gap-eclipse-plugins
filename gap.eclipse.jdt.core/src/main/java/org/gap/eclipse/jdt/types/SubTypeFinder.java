@@ -1,6 +1,18 @@
 package org.gap.eclipse.jdt.types;
 
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
+
 import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.Status;
+import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.jdt.core.CompletionProposal;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IType;
@@ -15,17 +27,12 @@ import org.gap.eclipse.jdt.CorePlugin;
 
 import com.google.common.base.Predicates;
 
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.FluxSink;
-import reactor.core.scheduler.Schedulers;
-
 @SuppressWarnings("restriction")
 public class SubTypeFinder {
 
-	public Flux<ICompletionProposal> find(final IType expectedType, JavaContentAssistInvocationContext context,
-			IProgressMonitor monitor) {
-		return Flux.<IType>create(e -> performSearch(e, expectedType, context, monitor))
-				.subscribeOn(Schedulers.single())
+	public Stream<ICompletionProposal> find(final IType expectedType, JavaContentAssistInvocationContext context,
+			IProgressMonitor monitor, Duration timeout) {
+		return performSearch(expectedType, context, monitor, timeout)
 				.map(m -> toCompletionProposal(m, context, monitor)).filter(Predicates.notNull());
 	}
 
@@ -59,17 +66,34 @@ public class SubTypeFinder {
 		return source != null && JavaCore.compareJavaVersions(JavaCore.VERSION_1_5, source) <= 0;
 	}
 
-	private void performSearch(FluxSink<IType> emitter, IType expectedType, JavaContentAssistInvocationContext context,
-			IProgressMonitor monitor) {
-		try {
-			IType[] subtypes = expectedType.newTypeHierarchy(monitor).getAllSubtypes(expectedType);
-			for (IType t : subtypes) {
-				emitter.next(t);
-			}
-			emitter.complete();
-		} catch (JavaModelException e) {
-			emitter.error(e);
-		}
+	private Stream<IType> performSearch(IType expectedType, JavaContentAssistInvocationContext context,
+			IProgressMonitor monitor,
+			Duration timeout) {
+		final List<IType> resultAccumerlator = Collections.synchronizedList(new ArrayList<>());
+		final CountDownLatch waiter = new CountDownLatch(1);
 
+		Job job = new Job("Static Member Search Caching") {
+
+			@Override
+			protected IStatus run(IProgressMonitor monitor) {
+				try {
+					IType[] subtypes = expectedType.newTypeHierarchy(monitor).getAllSubtypes(expectedType);
+					resultAccumerlator.addAll(Arrays.asList(subtypes));
+				} catch (JavaModelException e) {
+					CorePlugin.getDefault().logError(e.getMessage(), e);
+				} finally {
+					waiter.countDown();
+				}
+				return Status.OK_STATUS;
+			}
+		};
+		job.setPriority(Job.INTERACTIVE);
+		job.schedule();
+		try {
+			waiter.await(timeout.toMillis(), TimeUnit.MILLISECONDS);
+		} catch (InterruptedException e) {
+			CorePlugin.getDefault().logError(e.getMessage(), e);
+		}
+		return new ArrayList<>(resultAccumerlator).stream(); // copy and create the stream.
 	}
 }

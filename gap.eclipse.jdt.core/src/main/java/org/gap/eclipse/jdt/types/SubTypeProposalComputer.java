@@ -34,7 +34,6 @@ import org.eclipse.jface.text.contentassist.IContextInformation;
 import org.gap.eclipse.jdt.CorePlugin;
 import org.gap.eclipse.jdt.common.DisableCategoryJob;
 
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Sets;
 
 public class SubTypeProposalComputer implements IJavaCompletionProposalComputer {
@@ -76,20 +75,11 @@ public class SubTypeProposalComputer implements IJavaCompletionProposalComputer 
 	private List<ICompletionProposal> completionList(IProgressMonitor monitor,
 			JavaContentAssistInvocationContext context, IType expectedType) {
 		final Duration blockDuration = Duration.ofMillis(TIMEOUT).minusMillis(1000);
-		try {
-			if (isPreceedSpaceNewKeyword(context)) {
-				return subTypeFinder.find(expectedType, context, monitor).buffer(100)
-						.blockFirst(blockDuration);
+		if (isPreceedSpaceNewKeyword(context)) {
+			return subTypeFinder.find(expectedType, context, monitor, blockDuration).collect(Collectors.toList());
 
-			} else {
-				return staticMemberFinder.find(expectedType, context, monitor).buffer(100)
-						.blockFirst(blockDuration);
-			}
-		} catch (IllegalStateException e) {
-			CorePlugin.getDefault().logError(e.getMessage(), e);
-			// handle timeout
-			return ImmutableList.of(new ComputingProposal(context.getInvocationOffset(), "Searching ..."),
-					new ComputingProposal(context.getInvocationOffset(), "Timed out try again"));
+		} else {
+			return staticMemberFinder.find(expectedType, context, monitor, blockDuration).collect(Collectors.toList());
 		}
 	}
 
