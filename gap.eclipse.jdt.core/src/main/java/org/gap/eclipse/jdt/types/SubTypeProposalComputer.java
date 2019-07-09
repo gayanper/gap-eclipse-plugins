@@ -205,6 +205,8 @@ public class SubTypeProposalComputer implements IJavaCompletionProposalComputer 
 		private IJavaProject project;
 		private boolean preceedSpace = false;
 
+		private CodeRange lastVisited;
+
 		public CompletionASTVistor(JavaContentAssistInvocationContext context) {
 			this.offset = context.getInvocationOffset();
 			this.project = context.getProject();
@@ -217,21 +219,26 @@ public class SubTypeProposalComputer implements IJavaCompletionProposalComputer 
 
 		@Override
 		public boolean visit(MethodInvocation node) {
-			if (offset > node.getStartPosition() && offset < (node.getStartPosition() + node.getLength())) {
-				IMethodBinding method = node.resolveMethodBinding();
-				ITypeBinding typeAtOffset = null;
-				if (node.arguments().isEmpty()) {
-					typeAtOffset = method.getParameterTypes()[0];
-				} else {
-					typeAtOffset = findParameterTypeAtOffset(node, method);
-				}
-
-				try {
-					if (typeAtOffset != null) {
-						expectedType = project.findType(Signature.getTypeErasure(typeAtOffset.getQualifiedName()));
+			CodeRange current = new CodeRange(node.getStartPosition(), node.getStartPosition() + node.getLength());
+			if (current.inRange(offset)) {
+				if (lastVisited == null || lastVisited.inRange(current)) {
+					IMethodBinding method = node.resolveMethodBinding();
+					ITypeBinding typeAtOffset = null;
+					if (node.arguments().isEmpty()) {
+						typeAtOffset = method.getParameterTypes()[0];
+					} else {
+						typeAtOffset = findParameterTypeAtOffset(node, method);
 					}
-				} catch (JavaModelException e) {
-					e.printStackTrace();
+
+					try {
+						if (typeAtOffset != null) {
+							expectedType = project.findType(Signature.getTypeErasure(typeAtOffset.getQualifiedName()));
+						} else {
+							return true;
+						}
+					} catch (JavaModelException e) {
+						CorePlugin.getDefault().logError(e.getMessage(), e);
+					}
 				}
 			}
 			return false;
@@ -262,5 +269,4 @@ public class SubTypeProposalComputer implements IJavaCompletionProposalComputer 
 			return expectedType;
 		}
 	}
-
 }
