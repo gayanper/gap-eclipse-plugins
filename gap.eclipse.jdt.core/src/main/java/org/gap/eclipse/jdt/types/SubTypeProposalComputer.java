@@ -6,6 +6,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import org.eclipse.core.runtime.IProgressMonitor;
@@ -20,6 +22,7 @@ import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTParser;
 import org.eclipse.jdt.core.dom.ASTVisitor;
+import org.eclipse.jdt.core.dom.ClassInstanceCreation;
 import org.eclipse.jdt.core.dom.IMethodBinding;
 import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.MethodInvocation;
@@ -217,19 +220,28 @@ public class SubTypeProposalComputer implements IJavaCompletionProposalComputer 
 			}
 		}
 
+		@SuppressWarnings("unchecked")
+		@Override
+		public boolean visit(ClassInstanceCreation node) {
+			return visitNode(node, () -> node.arguments(), method -> Arrays.asList(method.getParameterTypes()),
+					() -> node.resolveConstructorBinding());
+		}
+
+		@SuppressWarnings("unchecked")
 		@Override
 		public boolean visit(MethodInvocation node) {
+			return visitNode(node, () -> node.arguments(), method -> Arrays.asList(method.getParameterTypes()),
+					() -> node.resolveMethodBinding());
+		}
+
+		private boolean visitNode(ASTNode node, Supplier<List<ASTNode>> argumentSupplier,
+				Function<IMethodBinding, List<ITypeBinding>> parameterSupplier,
+				Supplier<IMethodBinding> bindingSupplier) {
 			CodeRange current = new CodeRange(node.getStartPosition(), node.getStartPosition() + node.getLength());
 			if (current.inRange(offset)) {
 				if (lastVisited == null || lastVisited.inRange(current)) {
-					IMethodBinding method = node.resolveMethodBinding();
-					ITypeBinding typeAtOffset = null;
-					if (node.arguments().isEmpty()) {
-						typeAtOffset = method.getParameterTypes()[0];
-					} else {
-						typeAtOffset = findParameterTypeAtOffset(node, method);
-					}
-
+					ITypeBinding typeAtOffset = findParameterTypeAtOffset(argumentSupplier, parameterSupplier,
+							bindingSupplier);
 					try {
 						if (typeAtOffset != null) {
 							expectedType = project.findType(Signature.getTypeErasure(typeAtOffset.getQualifiedName()));
@@ -244,14 +256,19 @@ public class SubTypeProposalComputer implements IJavaCompletionProposalComputer 
 			return false;
 		}
 
-		private ITypeBinding findParameterTypeAtOffset(MethodInvocation node, IMethodBinding method) {
-			@SuppressWarnings("unchecked")
-			final List<Object> arguments = node.arguments();
+		private ITypeBinding findParameterTypeAtOffset(Supplier<List<ASTNode>> argumentSupplier,
+				Function<IMethodBinding, List<ITypeBinding>> parameterSupplier,
+				Supplier<IMethodBinding> bindingSupplier) {
+			final List<ASTNode> arguments = argumentSupplier.get();
+			if (arguments.isEmpty()) {
+				return parameterSupplier.apply(bindingSupplier.get()).get(0);
+			}
+
 			int typeIndex = -1;
 			int checkOffset = preceedSpace ? offset - 1 : offset;
 
 			for (int i = 0; i < arguments.size(); i++) {
-				final ASTNode astNode = (ASTNode) arguments.get(i);
+				final ASTNode astNode = arguments.get(i);
 				if (astNode.getStartPosition() <= checkOffset
 						&& (astNode.getStartPosition() + astNode.getLength()) >= checkOffset) {
 					typeIndex = i;
@@ -260,7 +277,7 @@ public class SubTypeProposalComputer implements IJavaCompletionProposalComputer 
 			}
 
 			if (typeIndex > -1) {
-				return method.getParameterTypes()[typeIndex];
+				return parameterSupplier.apply(bindingSupplier.get()).get(typeIndex);
 			}
 			return null;
 		}
