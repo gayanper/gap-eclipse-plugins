@@ -271,7 +271,9 @@ public class SubTypeProposalComputer implements IJavaCompletionProposalComputer 
 				final ASTNode astNode = arguments.get(i);
 				if (astNode.getStartPosition() <= checkOffset
 						&& (astNode.getStartPosition() + astNode.getLength()) >= checkOffset) {
-					typeIndex = i;
+					if (!(astNode instanceof ClassInstanceCreation || astNode instanceof MethodInvocation)) {
+						typeIndex = i;
+					}
 					break;
 				}
 			}
