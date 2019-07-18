@@ -153,7 +153,7 @@ public class StaticMemberFinder {
 			JavaContentAssistInvocationContext context,
 			IProgressMonitor parentMonitor, Duration timeout) {
 		SearchEngine engine = new SearchEngine();
-		SearchPattern pattern = SearchPattern.createPattern(expectedType.getFullyQualifiedName(),
+		SearchPattern pattern = SearchPattern.createPattern(fixInnerType(expectedType.getFullyQualifiedName()),
 				IJavaSearchConstants.TYPE,
 				IJavaSearchConstants.FIELD_DECLARATION_TYPE_REFERENCE | IJavaSearchConstants.RETURN_TYPE_REFERENCE,
 				SearchPattern.R_EXACT_MATCH);
@@ -200,5 +200,9 @@ public class StaticMemberFinder {
 			CorePlugin.getDefault().logError(e.getMessage(), e);
 		}
 		return new ArrayList<>(resultAccumerlator).stream(); // copy and create the stream.
+	}
+
+	private String fixInnerType(String fqn) {
+		return fqn.replace('$', '.');
 	}
 }
