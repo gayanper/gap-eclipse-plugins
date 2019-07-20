@@ -261,7 +261,10 @@ public class SubTypeProposalComputer implements IJavaCompletionProposalComputer 
 				Supplier<IMethodBinding> bindingSupplier) {
 			final List<ASTNode> arguments = argumentSupplier.get();
 			if (arguments.isEmpty()) {
-				return parameterSupplier.apply(bindingSupplier.get()).get(0);
+				IMethodBinding binding = bindingSupplier.get();
+				if (binding != null) {
+					return parameterSupplier.apply(binding).get(0);
+				}
 			}
 
 			int typeIndex = -1;
@@ -279,7 +282,10 @@ public class SubTypeProposalComputer implements IJavaCompletionProposalComputer 
 			}
 
 			if (typeIndex > -1) {
-				return parameterSupplier.apply(bindingSupplier.get()).get(typeIndex);
+				IMethodBinding binding = bindingSupplier.get();
+				if (binding != null) {
+					return parameterSupplier.apply(binding).get(typeIndex);
+				}
 			}
 			return null;
 		}
