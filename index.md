@@ -29,7 +29,14 @@ inspired from other IDEs such as vscode and IntelliJ.
 This feature will enable you to search for methods and fields in the workspace and to navigate into them.
 
 ![](./images/symbol.png)
-  
+
+
+- Method Recursion Marker
+This feature will introduce a new marker which will mark any method recursion expressions in java editor
+
+![](./images/recursion-marker.png)
+
+
   
 ## Update site
 [https://dl.bintray.com/gayanper/p2/gap-eclipse-jdt/](https://dl.bintray.com/gayanper/p2/gap-eclipse-jdt/)
