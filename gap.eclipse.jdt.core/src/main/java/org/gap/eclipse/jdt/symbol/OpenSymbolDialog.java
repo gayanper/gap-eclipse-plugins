@@ -1,18 +1,23 @@
 package org.gap.eclipse.jdt.symbol;
 
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.List;
 
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.jdt.core.IMember;
+import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.search.IJavaSearchConstants;
+import org.eclipse.jdt.core.search.IJavaSearchScope;
 import org.eclipse.jdt.core.search.SearchEngine;
 import org.eclipse.jdt.core.search.SearchMatch;
 import org.eclipse.jdt.core.search.SearchParticipant;
 import org.eclipse.jdt.core.search.SearchPattern;
 import org.eclipse.jdt.core.search.SearchRequestor;
+import org.eclipse.jdt.ui.JavaElementLabels;
 import org.eclipse.jface.dialogs.IDialogSettings;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
@@ -66,16 +71,59 @@ public class OpenSymbolDialog extends FilteredItemsSelectionDialog {
 			IProgressMonitor monitor) throws CoreException {
 		monitor.setTaskName("Searching for symbols");
 
-		SearchPattern methodpPattern = SearchPattern.createPattern(itemsFilter.getPattern(),
+		IJavaSearchScope scope;
+		String memberName;
+
+		final String pattern = itemsFilter.getPattern();
+		if (isQualifiedPattern(pattern)) {
+			final String parentType = pattern.substring(0, pattern.lastIndexOf('.')).replace('$', '.');
+			IType type = searchForType(parentType, monitor);
+			if (type == null) {
+				return;
+			}
+			scope = SearchEngine.createHierarchyScope(type);
+			memberName = pattern.substring(pattern.lastIndexOf('.') + 1);
+			((SymbolsFilter) itemsFilter).setFullyQualifiedSearch(true);
+		} else {
+			scope = SearchEngine.createWorkspaceScope();
+			memberName = pattern;
+			((SymbolsFilter) itemsFilter).setFullyQualifiedSearch(false);
+		}
+
+
+		SearchPattern methodPattern = SearchPattern.createPattern(memberName,
 				IJavaSearchConstants.METHOD, IJavaSearchConstants.DECLARATIONS,
 				SearchPattern.R_CASE_SENSITIVE | SearchPattern.R_PREFIX_MATCH);
 
-		SearchPattern fieldPattern = SearchPattern.createPattern(itemsFilter.getPattern(), IJavaSearchConstants.FIELD,
+		SearchPattern fieldPattern = SearchPattern.createPattern(memberName, IJavaSearchConstants.FIELD,
 				IJavaSearchConstants.DECLARATIONS, SearchPattern.R_CASE_SENSITIVE | SearchPattern.R_PREFIX_MATCH);
 
-		engine.search(SearchPattern.createOrPattern(methodpPattern, fieldPattern),
+		engine.search(SearchPattern.createOrPattern(methodPattern, fieldPattern),
 				new SearchParticipant[] { SearchEngine.getDefaultSearchParticipant() },
-				SearchEngine.createWorkspaceScope(), new SymbolRequester(contentProvider, itemsFilter), monitor);
+				scope, new SymbolRequester(contentProvider, itemsFilter), monitor);
+	}
+
+	private IType searchForType(String parentType, IProgressMonitor monitor) throws CoreException {
+		SearchPattern pattern = SearchPattern.createPattern(parentType, IJavaSearchConstants.TYPE,
+				IJavaSearchConstants.DECLARATIONS, SearchPattern.R_CASE_SENSITIVE | SearchPattern.R_FULL_MATCH);
+		List<IType> result = new ArrayList<>(1);
+		engine.search(pattern,
+				new SearchParticipant[] { SearchEngine.getDefaultSearchParticipant() },
+				SearchEngine.createWorkspaceScope(), new SearchRequestor() {
+
+					@Override
+					public void acceptSearchMatch(SearchMatch match) throws CoreException {
+						if ((match.getAccuracy() == SearchMatch.A_ACCURATE) && (match.getElement() instanceof IType)) {
+							result.add((IType) match.getElement());
+						}
+					}
+				}, monitor);
+
+		return result.isEmpty() ? null : result.get(0);
+	}
+
+	private boolean isQualifiedPattern(String pattern) {
+		return pattern.contains(".");
 	}
 
 	@Override
@@ -119,12 +167,19 @@ public class OpenSymbolDialog extends FilteredItemsSelectionDialog {
 	private class SymbolsFilter extends ItemsFilter {
 
 		private boolean resultHasBothTypes;
+		private boolean fullyQualifiedSearch;
 
 		@Override
 		public boolean matchItem(Object item) {
 			IMember member = (IMember) item;
+			final String content = fullyQualifiedSearch ? fqn(member) : member.getElementName();
+			return patternMatcher.matches(content);
+		}
 
-			return patternMatcher.matches(member.getElementName());
+		private String fqn(IMember member) {
+			return JavaElementLabels.getElementLabel(member,
+					JavaElementLabels.F_FULLY_QUALIFIED | JavaElementLabels.M_FULLY_QUALIFIED
+							| JavaElementLabels.M_PARAMETER_TYPES);
 		}
 
 		@Override
@@ -139,6 +194,10 @@ public class OpenSymbolDialog extends FilteredItemsSelectionDialog {
 
 		public void setResultHasBothTypes(boolean resultHasBothTypes) {
 			this.resultHasBothTypes = resultHasBothTypes;
+		}
+
+		public void setFullyQualifiedSearch(boolean fullyQualifiedSearch) {
+			this.fullyQualifiedSearch = fullyQualifiedSearch;
 		}
 	}
 
