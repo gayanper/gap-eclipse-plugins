@@ -6,6 +6,7 @@ import java.util.stream.Stream;
 import org.eclipse.core.resources.IMarker;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.compiler.BuildContext;
@@ -16,10 +17,12 @@ import org.gap.eclipse.jdt.CorePlugin;
 public class MarkerParticipant extends CompilationParticipant {
 	@Override
 	public void reconcile(ReconcileContext context) {
-		try {
-			context.getAST(context.getASTLevel()).accept(new RecursiveASTVistor(context));
-		} catch (JavaModelException e) {
-			CorePlugin.getDefault().logError(e.getMessage(), e);
+		if (context.getASTLevel() != ICompilationUnit.NO_AST) {
+			try {
+				context.getAST(context.getASTLevel()).accept(new RecursiveASTVistor(context));
+			} catch (JavaModelException e) {
+				CorePlugin.getDefault().logError(e.getMessage(), e);
+			}
 		}
 	}
 
