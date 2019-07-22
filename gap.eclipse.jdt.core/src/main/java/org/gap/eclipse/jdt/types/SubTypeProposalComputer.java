@@ -263,7 +263,10 @@ public class SubTypeProposalComputer implements IJavaCompletionProposalComputer 
 			if (arguments.isEmpty()) {
 				IMethodBinding binding = bindingSupplier.get();
 				if (binding != null) {
-					return parameterSupplier.apply(binding).get(0);
+					List<ITypeBinding> parameters = parameterSupplier.apply(binding);
+					if (!parameters.isEmpty()) {
+						return parameters.get(0);
+					}
 				}
 			}
 
