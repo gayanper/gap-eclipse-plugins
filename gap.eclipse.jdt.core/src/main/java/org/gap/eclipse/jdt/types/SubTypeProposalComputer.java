@@ -26,7 +26,6 @@ import org.eclipse.jdt.core.dom.ClassInstanceCreation;
 import org.eclipse.jdt.core.dom.IMethodBinding;
 import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.MethodInvocation;
-import org.eclipse.jdt.ui.PreferenceConstants;
 import org.eclipse.jdt.ui.text.java.CompletionProposalCollector;
 import org.eclipse.jdt.ui.text.java.ContentAssistInvocationContext;
 import org.eclipse.jdt.ui.text.java.IJavaCompletionProposalComputer;
@@ -35,7 +34,6 @@ import org.eclipse.jface.text.BadLocationException;
 import org.eclipse.jface.text.contentassist.ICompletionProposal;
 import org.eclipse.jface.text.contentassist.IContextInformation;
 import org.gap.eclipse.jdt.CorePlugin;
-import org.gap.eclipse.jdt.common.DisableCategoryJob;
 
 import com.google.common.collect.Sets;
 
@@ -43,7 +41,7 @@ public class SubTypeProposalComputer implements IJavaCompletionProposalComputer 
 	// TODO: this class need heavy refactoring after testing the current
 	// implementation.
 
-	private static final String CATEGORY_ID = "gap.eclipse.jdt.proposalCategory.subType";
+	public static final String CATEGORY_ID = "gap.eclipse.jdt.proposalCategory.subType";
 	private Set<String> unsupportedTypes = Sets.newHashSet("java.lang.String", "java.lang.Object",
 			"java.lang.Cloneable", "java.lang.Throwable", "java.lang.Exception");
 
@@ -54,7 +52,6 @@ public class SubTypeProposalComputer implements IJavaCompletionProposalComputer 
 
 	@Override
 	public void sessionStarted() {
-		disableOnDefaultTabIfNeeded();
 	}
 
 	@Override
@@ -83,13 +80,6 @@ public class SubTypeProposalComputer implements IJavaCompletionProposalComputer 
 
 		} else {
 			return staticMemberFinder.find(expectedType, context, monitor, blockDuration).collect(Collectors.toList());
-		}
-	}
-
-	protected void disableOnDefaultTabIfNeeded() {
-		final Set<String> excluded = Sets.newHashSet(PreferenceConstants.getExcludedCompletionProposalCategories());
-		if (!excluded.contains(CATEGORY_ID)) {
-			DisableCategoryJob.forCategory(CATEGORY_ID).schedule(300);
 		}
 	}
 

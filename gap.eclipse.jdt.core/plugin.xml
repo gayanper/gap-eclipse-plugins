@@ -85,4 +85,10 @@
             verticalRulerPreferenceValue="true">
       </specification>
    </extension>
+   <extension
+         point="org.eclipse.ui.startup">
+      <startup
+            class="org.gap.eclipse.jdt.StartupTasks">
+      </startup>
+   </extension>
 </plugin>
