@@ -80,6 +80,7 @@
             textPreferenceKey="gap.eclipse.jdt.annotation.recursive.text"
             textPreferenceValue="true"
             textStylePreferenceKey="gap.eclipse.jdt.annotation.recursive.textStyle"
+            textStylePreferenceValue="NONE"
             verticalRulerPreferenceKey="gap.eclipse.jdt.annotation.recursive.verticalruler"
             verticalRulerPreferenceValue="true">
       </specification>
