@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -43,10 +44,45 @@ public class StaticMemberFinder {
 
 	public Stream<ICompletionProposal> find(final IType expectedType, JavaContentAssistInvocationContext context,
 			IProgressMonitor monitor, Duration timeout) {
-		return performSearch(expectedType, context, monitor, timeout)
-				.map(o -> (IMember) o)
-				.filter(this::onlyPublicStatic).map(m -> toCompletionProposal(m, context, monitor))
+		return performSearch(expectedType, context, monitor, timeout).filter(this::onlyPublicStatic)
+				.filter(m -> isMatching(m, expectedType)).map(m -> toCompletionProposal(m, context, monitor))
 				.filter(Predicates.notNull());
+	}
+
+	private boolean isMatching(IMember member, IType expectedType) {
+		try {
+			if (member instanceof IMethod) {
+				return isMatchingMethod((IMethod) member, expectedType);
+			} else if (member instanceof IField) {
+				return isMatchingField((IField) member, expectedType);
+			}
+		} catch (JavaModelException e) {
+			CorePlugin.getDefault().logError(e.getMessage(), e);
+		}
+		return false;
+	}
+
+	private boolean isMatchingField(IField field, IType expectedType) throws JavaModelException {
+		final String erasureSignature = Signature.getTypeErasure(field.getTypeSignature());
+		return resolvedTypeName(field, erasureSignature).filter(expectedType.getFullyQualifiedName()::equals)
+				.isPresent();
+	}
+
+	private boolean isMatchingMethod(IMethod method, IType expectedType) throws JavaModelException {
+		final String erasureSignature = Signature.getTypeErasure(method.getReturnType());
+		return resolvedTypeName(method, erasureSignature)
+				.filter(expectedType.getFullyQualifiedName()::equals)
+				.isPresent();
+	}
+
+	private Optional<String> resolvedTypeName(IMember member, String signature)
+			throws JavaModelException
+	{
+		final String packageName = Signature.getSignatureQualifier(signature);
+		final String className = Signature.getSignatureSimpleName(signature);
+		final String fqn = packageName.isEmpty() ? className : packageName.concat(".").concat(className);
+		final IType declaringType = member.getDeclaringType();
+		return Optional.ofNullable(declaringType.resolveType(fqn, null)).map(v -> v[0]).map(e -> String.join(".", e));
 	}
 
 	private ICompletionProposal toCompletionProposal(IMember member, JavaContentAssistInvocationContext context,
@@ -149,16 +185,13 @@ public class StaticMemberFinder {
 		}
 	}
 
-	private Stream<Object> performSearch(IType expectedType,
-			JavaContentAssistInvocationContext context,
+	private Stream<IMember> performSearch(IType expectedType, JavaContentAssistInvocationContext context,
 			IProgressMonitor parentMonitor, Duration timeout) {
 		SearchEngine engine = new SearchEngine();
 		SearchPattern pattern = SearchPattern.createPattern(fixInnerType(expectedType.getFullyQualifiedName()),
-				IJavaSearchConstants.TYPE,
-				IJavaSearchConstants.FIELD_DECLARATION_TYPE_REFERENCE | IJavaSearchConstants.RETURN_TYPE_REFERENCE,
-				SearchPattern.R_EXACT_MATCH);
+				IJavaSearchConstants.TYPE, IJavaSearchConstants.REFERENCES, SearchPattern.R_ERASURE_MATCH);
 
-		final List<Object> resultAccumerlator = Collections.synchronizedList(new ArrayList<>());
+		final List<IMember> resultAccumerlator = Collections.synchronizedList(new ArrayList<>());
 		final CountDownLatch waiter = new CountDownLatch(1);
 
 		Job job = new Job("Static Member Search Caching") {
@@ -174,8 +207,9 @@ public class StaticMemberFinder {
 
 								@Override
 								public void acceptSearchMatch(SearchMatch match) throws CoreException {
-									if (match.getAccuracy() == SearchMatch.A_ACCURATE) {
-										resultAccumerlator.add(match.getElement());
+									if (match.getAccuracy() == SearchMatch.A_ACCURATE
+											&& (match.getElement() instanceof IMember)) {
+										resultAccumerlator.add((IMember) match.getElement());
 									}
 								}
 
@@ -199,7 +233,8 @@ public class StaticMemberFinder {
 		} catch (InterruptedException e) {
 			CorePlugin.getDefault().logError(e.getMessage(), e);
 		}
-		return new ArrayList<>(resultAccumerlator).stream(); // copy and create the stream.
+		// copy and create a stream.
+		return new ArrayList<>(resultAccumerlator).stream();
 	}
 
 	private String fixInnerType(String fqn) {
