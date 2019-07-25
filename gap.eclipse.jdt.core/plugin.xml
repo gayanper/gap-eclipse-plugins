@@ -6,9 +6,10 @@
          name="Smart SubType proposals"
          point="org.eclipse.jdt.ui.javaCompletionProposalComputer">
 		<javaCompletionProposalComputer
-			activate="true"
-			categoryId="gap.eclipse.jdt.proposalCategory.subType"
-			class="org.gap.eclipse.jdt.types.SubTypeProposalComputer"/>
+	        activate="false"
+	        categoryId="gap.eclipse.jdt.proposalCategory.subType"
+	        class="org.gap.eclipse.jdt.types.SubTypeProposalComputer">
+  </javaCompletionProposalComputer>
    </extension>
    <extension
          point="org.eclipse.ui.bindings">

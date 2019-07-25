@@ -54,9 +54,20 @@ public class SubTypeProposalComputer implements IJavaCompletionProposalComputer 
 	public void sessionStarted() {
 	}
 
+	// This is there to handle the eclipse bug
+	// https://bugs.eclipse.org/bugs/show_bug.cgi?id=549569
+	private boolean shouldCompute() {
+		return Arrays.stream(Thread.currentThread().getStackTrace())
+				.anyMatch(st -> st.getClassName().endsWith("SpecificContentAssistExecutor"));
+	}
+
 	@Override
 	public List<ICompletionProposal> computeCompletionProposals(ContentAssistInvocationContext invocationContext,
 			IProgressMonitor monitor) {
+		if (!shouldCompute()) {
+			return Collections.emptyList();
+		}
+
 		if (invocationContext instanceof JavaContentAssistInvocationContext) {
 			JavaContentAssistInvocationContext context = (JavaContentAssistInvocationContext) invocationContext;
 			if (context.getExpectedType() != null) {
