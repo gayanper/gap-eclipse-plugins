@@ -35,6 +35,7 @@ import org.eclipse.jface.text.contentassist.ICompletionProposal;
 import org.eclipse.jface.text.contentassist.IContextInformation;
 import org.gap.eclipse.jdt.CorePlugin;
 
+import com.google.common.base.Suppliers;
 import com.google.common.collect.Sets;
 
 public class SubTypeProposalComputer implements IJavaCompletionProposalComputer {
@@ -221,38 +222,40 @@ public class SubTypeProposalComputer implements IJavaCompletionProposalComputer 
 			}
 		}
 
-		@SuppressWarnings("unchecked")
 		@Override
 		public boolean visit(ClassInstanceCreation node) {
-			return visitNode(node, () -> node.arguments(), method -> Arrays.asList(method.getParameterTypes()),
-					() -> node.resolveConstructorBinding());
+			return visitNode(node, Suppliers.memoize(node::arguments),
+					method -> Arrays.asList(method.getParameterTypes()),
+					Suppliers.memoize(node::resolveConstructorBinding));
 		}
 
-		@SuppressWarnings("unchecked")
 		@Override
 		public boolean visit(MethodInvocation node) {
-			return visitNode(node, () -> node.arguments(), method -> Arrays.asList(method.getParameterTypes()),
-					() -> node.resolveMethodBinding());
+			return visitNode(node, Suppliers.memoize(node::arguments),
+					method -> Arrays.asList(method.getParameterTypes()), Suppliers.memoize(node::resolveMethodBinding));
 		}
 
 		private boolean visitNode(ASTNode node, Supplier<List<ASTNode>> argumentSupplier,
 				Function<IMethodBinding, List<ITypeBinding>> parameterSupplier,
 				Supplier<IMethodBinding> bindingSupplier) {
-			CodeRange current = new CodeRange(node.getStartPosition(), node.getStartPosition() + node.getLength());
-			if (current.inRange(offset)) {
-				if (lastVisited == null || lastVisited.inRange(current)) {
-					ITypeBinding typeAtOffset = findParameterTypeAtOffset(argumentSupplier, parameterSupplier,
-							bindingSupplier);
-					try {
-						if (typeAtOffset != null) {
-							expectedType = project.findType(Signature.getTypeErasure(typeAtOffset.getQualifiedName()));
-						} else {
-							return true;
-						}
-					} catch (JavaModelException e) {
-						CorePlugin.getDefault().logError(e.getMessage(), e);
+			final CodeRange current = new CodeRange(node.getStartPosition(), node.getStartPosition() + node.getLength(),
+					node);
+
+			// for varargs they are considered as single parameter methods with a array.
+			int varArgsOffset = preceedSpace ? 2 : 1;
+			final int adjustedOffset = bindingSupplier.get().isVarargs() ? offset - varArgsOffset : offset;
+			if (current.inRange(adjustedOffset) && (lastVisited == null || lastVisited.inRange(current))) {
+				ITypeBinding typeAtOffset = findParameterTypeAtOffset(argumentSupplier, parameterSupplier,
+						bindingSupplier);
+				try {
+					if (typeAtOffset != null) {
+						expectedType = project.findType(Signature.getTypeErasure(typeAtOffset.getQualifiedName()));
 					}
+				} catch (JavaModelException e) {
+					CorePlugin.getDefault().logError(e.getMessage(), e);
 				}
+				lastVisited = current;
+				return true;
 			}
 			return false;
 		}
@@ -261,11 +264,25 @@ public class SubTypeProposalComputer implements IJavaCompletionProposalComputer 
 				Function<IMethodBinding, List<ITypeBinding>> parameterSupplier,
 				Supplier<IMethodBinding> bindingSupplier) {
 			final List<ASTNode> arguments = argumentSupplier.get();
-			if (arguments.isEmpty()) {
-				IMethodBinding binding = bindingSupplier.get();
-				if (binding != null) {
-					List<ITypeBinding> parameters = parameterSupplier.apply(binding);
-					if (!parameters.isEmpty()) {
+
+			IMethodBinding binding = bindingSupplier.get();
+			if (binding != null) {
+				List<ITypeBinding> parameters = parameterSupplier.apply(binding);
+				if (!parameters.isEmpty()) {
+					if (binding.isVarargs()) {
+						return parameters.get(0).getElementType();
+					} else {
+						return parameters.get(0);
+					}
+				}
+			}
+
+			if (arguments.isEmpty() && (binding != null)) {
+				List<ITypeBinding> parameters = parameterSupplier.apply(binding);
+				if (!parameters.isEmpty()) {
+					if (binding.isVarargs()) {
+						return parameters.get(0).getElementType();
+					} else {
 						return parameters.get(0);
 					}
 				}
@@ -285,11 +302,8 @@ public class SubTypeProposalComputer implements IJavaCompletionProposalComputer 
 				}
 			}
 
-			if (typeIndex > -1) {
-				IMethodBinding binding = bindingSupplier.get();
-				if (binding != null) {
-					return parameterSupplier.apply(binding).get(typeIndex);
-				}
+			if ((typeIndex > -1) && (binding != null)) {
+				return parameterSupplier.apply(binding).get(typeIndex);
 			}
 			return null;
 		}
