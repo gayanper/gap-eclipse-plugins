@@ -58,8 +58,9 @@ public class SubTypeProposalComputer implements IJavaCompletionProposalComputer 
 	// This is there to handle the eclipse bug
 	// https://bugs.eclipse.org/bugs/show_bug.cgi?id=549569
 	private boolean shouldCompute() {
-		return Arrays.stream(Thread.currentThread().getStackTrace())
-				.anyMatch(st -> st.getClassName().endsWith("SpecificContentAssistExecutor"));
+//		return Arrays.stream(Thread.currentThread().getStackTrace())
+//				.anyMatch(st -> st.getClassName().endsWith("SpecificContentAssistExecutor"));
+		return true;
 	}
 
 	@Override
