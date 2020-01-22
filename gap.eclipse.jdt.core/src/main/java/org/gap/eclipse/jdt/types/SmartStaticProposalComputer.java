@@ -1,0 +1,112 @@
+package org.gap.eclipse.jdt.types;
+
+import java.time.Duration;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.jdt.core.IType;
+import org.eclipse.jdt.core.dom.AST;
+import org.eclipse.jdt.core.dom.ASTNode;
+import org.eclipse.jdt.core.dom.ASTParser;
+import org.eclipse.jdt.ui.text.java.ContentAssistInvocationContext;
+import org.eclipse.jdt.ui.text.java.IJavaCompletionProposalComputer;
+import org.eclipse.jdt.ui.text.java.JavaContentAssistInvocationContext;
+import org.eclipse.jface.text.BadLocationException;
+import org.eclipse.jface.text.contentassist.ICompletionProposal;
+import org.eclipse.jface.text.contentassist.IContextInformation;
+import org.gap.eclipse.jdt.CorePlugin;
+
+import com.google.common.collect.Sets;
+
+public class SmartStaticProposalComputer extends AbstractSmartProposalComputer implements IJavaCompletionProposalComputer {
+	public static final String CATEGORY_ID = "gap.eclipse.jdt.proposalCategory.smartStatic";
+	private Set<String> unsupportedTypes = Sets.newHashSet("java.lang.String", "java.lang.Object",
+			"java.lang.Cloneable", "java.lang.Throwable", "java.lang.Exception");
+
+	private StaticMemberFinder staticMemberFinder = new StaticMemberFinder();
+
+	private final static long TIMEOUT = Long.getLong("org.eclipse.jdt.ui.codeAssistTimeout", 5000);
+
+	@Override
+	public void sessionStarted() {
+	}
+
+
+	@Override
+	public List<ICompletionProposal> computeCompletionProposals(ContentAssistInvocationContext invocationContext,
+			IProgressMonitor monitor) {
+		if (invocationContext instanceof JavaContentAssistInvocationContext) {
+			JavaContentAssistInvocationContext context = (JavaContentAssistInvocationContext) invocationContext;
+			if (context.getExpectedType() != null) {
+				IType expectedType = context.getExpectedType();
+				if (unsupportedTypes.contains(expectedType.getFullyQualifiedName())) {
+					return Collections.emptyList();
+				}
+				return completionList(monitor, context, expectedType);
+			} else {
+				return searchFromAST((JavaContentAssistInvocationContext) context, monitor);
+			}
+		}
+		return Collections.emptyList();
+	}
+
+	private List<ICompletionProposal> completionList(IProgressMonitor monitor,
+			JavaContentAssistInvocationContext context, IType expectedType) {
+		final Duration blockDuration = Duration.ofMillis(TIMEOUT).minusSeconds(2);
+		if (!isPreceedSpaceNewKeyword(context)) {
+			return staticMemberFinder.find(expectedType, context, monitor, blockDuration).collect(Collectors.toList());
+		}
+		return Collections.emptyList();
+	}
+
+	private List<ICompletionProposal> searchFromAST(JavaContentAssistInvocationContext context,
+			IProgressMonitor monitor) {
+		ASTParser parser = ASTParser.newParser(AST.JLS13);
+		parser.setSource(context.getCompilationUnit());
+		parser.setProject(context.getProject());
+		parser.setResolveBindings(true);
+		parser.setStatementsRecovery(true);
+		parser.setBindingsRecovery(true);
+		ASTNode ast = parser.createAST(monitor);
+		CompletionASTVistor visitor = new CompletionASTVistor(context);
+		ast.accept(visitor);
+		final IType expectedType = visitor.getExpectedType();
+		if (expectedType == null || unsupportedTypes.contains(expectedType.getFullyQualifiedName())) {
+			return Collections.emptyList();
+		}
+		return completionList(monitor, context, expectedType);
+	}
+
+	private boolean isPreceedSpaceNewKeyword(ContentAssistInvocationContext context) {
+		final int offset = context.getInvocationOffset();
+		final String keywordPrefix = "new ";
+		if (offset > keywordPrefix.length()) {
+			try {
+				return context.getDocument().get(offset - keywordPrefix.length(), keywordPrefix.length())
+						.equals(keywordPrefix);
+			} catch (BadLocationException e) {
+				CorePlugin.getDefault().logError(e.getMessage(), e);
+			}
+		}
+		return false;
+	}
+
+	@Override
+	public List<IContextInformation> computeContextInformation(ContentAssistInvocationContext context,
+			IProgressMonitor monitor) {
+		return Collections.emptyList();
+	}
+
+	@Override
+	public String getErrorMessage() {
+		return null;
+	}
+
+	@Override
+	public void sessionEnded() {
+
+	}
+}

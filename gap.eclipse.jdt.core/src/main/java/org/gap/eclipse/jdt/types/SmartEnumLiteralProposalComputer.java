@@ -1,6 +1,5 @@
 package org.gap.eclipse.jdt.types;
 
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -38,37 +37,20 @@ import org.gap.eclipse.jdt.CorePlugin;
 import com.google.common.base.Suppliers;
 import com.google.common.collect.Sets;
 
-public class SubTypeProposalComputer implements IJavaCompletionProposalComputer {
-	// TODO: this class need heavy refactoring after testing the current
-	// implementation.
+public class SmartEnumLiteralProposalComputer extends AbstractSmartProposalComputer
+		implements IJavaCompletionProposalComputer {
 
-	public static final String CATEGORY_ID = "gap.eclipse.jdt.proposalCategory.subType";
+	public static final String CATEGORY_ID = "gap.eclipse.jdt.proposalCategory.smartEnum";
 	private Set<String> unsupportedTypes = Sets.newHashSet("java.lang.String", "java.lang.Object",
 			"java.lang.Cloneable", "java.lang.Throwable", "java.lang.Exception");
-
-	private StaticMemberFinder staticMemberFinder = new StaticMemberFinder();
-	private SubTypeFinder subTypeFinder = new SubTypeFinder();
-
-	private final static long TIMEOUT = Long.getLong("org.eclipse.jdt.ui.codeAssistTimeout", 5000);
 
 	@Override
 	public void sessionStarted() {
 	}
 
-	// This is there to handle the eclipse bug
-	// https://bugs.eclipse.org/bugs/show_bug.cgi?id=549569
-	private boolean shouldCompute() {
-//		return Arrays.stream(Thread.currentThread().getStackTrace())
-//				.anyMatch(st -> st.getClassName().endsWith("SpecificContentAssistExecutor"));
-		return true;
-	}
-
 	@Override
 	public List<ICompletionProposal> computeCompletionProposals(ContentAssistInvocationContext invocationContext,
 			IProgressMonitor monitor) {
-		if (!shouldCompute()) {
-			return Collections.emptyList();
-		}
 
 		if (invocationContext instanceof JavaContentAssistInvocationContext) {
 			JavaContentAssistInvocationContext context = (JavaContentAssistInvocationContext) invocationContext;
@@ -77,7 +59,14 @@ public class SubTypeProposalComputer implements IJavaCompletionProposalComputer 
 				if (unsupportedTypes.contains(expectedType.getFullyQualifiedName())) {
 					return Collections.emptyList();
 				}
-				return completionList(monitor, context, expectedType);
+
+				try {
+					if (expectedType.isEnum()) {
+						return createEnumProposals(context, expectedType);
+					}
+				} catch (JavaModelException e) {
+					CorePlugin.getDefault().logError(e.getMessage(), e);
+				}
 			} else {
 				return searchFromAST((JavaContentAssistInvocationContext) context, monitor);
 			}
@@ -85,20 +74,9 @@ public class SubTypeProposalComputer implements IJavaCompletionProposalComputer 
 		return Collections.emptyList();
 	}
 
-	private List<ICompletionProposal> completionList(IProgressMonitor monitor,
-			JavaContentAssistInvocationContext context, IType expectedType) {
-		final Duration blockDuration = Duration.ofMillis(TIMEOUT).minusMillis(1000);
-		if (isPreceedSpaceNewKeyword(context)) {
-			return subTypeFinder.find(expectedType, context, monitor, blockDuration).collect(Collectors.toList());
-
-		} else {
-			return staticMemberFinder.find(expectedType, context, monitor, blockDuration).collect(Collectors.toList());
-		}
-	}
-
 	private List<ICompletionProposal> searchFromAST(JavaContentAssistInvocationContext context,
 			IProgressMonitor monitor) {
-		ASTParser parser = ASTParser.newParser(AST.JLS11);
+		ASTParser parser = ASTParser.newParser(AST.JLS13);
 		parser.setSource(context.getCompilationUnit());
 		parser.setProject(context.getProject());
 		parser.setResolveBindings(true);
@@ -114,31 +92,20 @@ public class SubTypeProposalComputer implements IJavaCompletionProposalComputer 
 
 		try {
 			if (expectedType.isEnum()) {
-				Set<IField> literals = Arrays.stream(expectedType.getChildren()).filter(
-						e -> (e.getElementType() == IJavaElement.FIELD) && !e.getElementName().equals("$VALUES"))
-						.map(e -> (IField) e).collect(Collectors.toSet());
-				return createEnumProposals(literals, context);
-			} else {
-				return completionList(monitor, context, expectedType);
+				return createEnumProposals(context, expectedType);
 			}
 		} catch (JavaModelException e) {
 			CorePlugin.getDefault().logError(e.getMessage(), e);
-			return Collections.emptyList();
 		}
+		return Collections.emptyList();
 	}
 
-	private boolean isPreceedSpaceNewKeyword(ContentAssistInvocationContext context) {
-		final int offset = context.getInvocationOffset();
-		final String keywordPrefix = "new ";
-		if (offset > keywordPrefix.length()) {
-			try {
-				return context.getDocument().get(offset - keywordPrefix.length(), keywordPrefix.length())
-						.equals(keywordPrefix);
-			} catch (BadLocationException e) {
-				CorePlugin.getDefault().logError(e.getMessage(), e);
-			}
-		}
-		return false;
+	private List<ICompletionProposal> createEnumProposals(JavaContentAssistInvocationContext context,
+			final IType expectedType) throws JavaModelException {
+		Set<IField> literals = Arrays.stream(expectedType.getChildren())
+				.filter(e -> (e.getElementType() == IJavaElement.FIELD) && !e.getElementName().equals("$VALUES"))
+				.map(e -> (IField) e).collect(Collectors.toSet());
+		return createEnumProposals(literals, context);
 	}
 
 	private List<ICompletionProposal> createEnumProposals(Set<IField> literals,
@@ -174,19 +141,6 @@ public class SubTypeProposalComputer implements IJavaCompletionProposalComputer 
 			response.trimToSize();
 		}
 		return response;
-	}
-
-	private CompletionProposal createImportProposal(JavaContentAssistInvocationContext context, IType type)
-			throws JavaModelException {
-		CompletionProposal proposal = CompletionProposal.create(CompletionProposal.TYPE_IMPORT,
-				context.getInvocationOffset());
-		String fullyQualifiedName = type.getFullyQualifiedName();
-		proposal.setCompletion(fullyQualifiedName.toCharArray());
-		proposal.setDeclarationSignature(type.getPackageFragment().getElementName().toCharArray());
-		proposal.setFlags(type.getFlags());
-		proposal.setSignature(Signature.createTypeSignature(fullyQualifiedName, true).toCharArray());
-
-		return proposal;
 	}
 
 	@Override

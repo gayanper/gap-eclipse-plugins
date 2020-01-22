@@ -2,13 +2,13 @@
 <?eclipse version="3.4"?>
 <plugin>
    <extension
-         id="gap.eclipse.jdt.subType"
-         name="Smart SubType proposals"
+         id="gap.eclipse.jdt.smartStatic"
+         name="Smart Static Proposals"
          point="org.eclipse.jdt.ui.javaCompletionProposalComputer">
 		<javaCompletionProposalComputer
         activate="false"
-        categoryId="gap.eclipse.jdt.proposalCategory.subType"
-        class="org.gap.eclipse.jdt.types.SubTypeProposalComputer"
+        categoryId="gap.eclipse.jdt.proposalCategory.smartStatic"
+        class="org.gap.eclipse.jdt.types.SmartStaticProposalComputer"
         requiresUIThread="false">
   </javaCompletionProposalComputer>
    </extension>
@@ -21,7 +21,7 @@
             sequence="M2+M3+M1+SPACE">
          <parameter
                id="org.eclipse.jdt.ui.specific_content_assist.category_id"
-               value="gap.eclipse.jdt.proposalCategory.subType">
+               value="gap.eclipse.jdt.proposalCategory.smartStatic">
          </parameter>
       </key>
       <key
@@ -92,5 +92,27 @@
       <startup
             class="org.gap.eclipse.jdt.StartupTasks">
       </startup>
+   </extension>
+   <extension
+         id="gap.eclipse.jdt.smartSubtype"
+         name="Smart Subtype Proposals"
+         point="org.eclipse.jdt.ui.javaCompletionProposalComputer">
+		<javaCompletionProposalComputer
+        activate="false"
+        categoryId="gap.eclipse.jdt.proposalCategory.smartSubtype"
+        class="org.gap.eclipse.jdt.types.SmartSubTypeProposalComputer"
+        requiresUIThread="false">
+		 </javaCompletionProposalComputer>
+   </extension>
+   <extension
+         id="gap.eclipse.jdt.smartEnum"
+         name="Smart Enum Proposals"
+         point="org.eclipse.jdt.ui.javaCompletionProposalComputer">
+		<javaCompletionProposalComputer
+        activate="false"
+        categoryId="gap.eclipse.jdt.proposalCategory.smartEnum"
+        class="org.gap.eclipse.jdt.types.SmartEnumLiteralProposalComputer"
+        requiresUIThread="false">
+		 </javaCompletionProposalComputer>
    </extension>
 </plugin>

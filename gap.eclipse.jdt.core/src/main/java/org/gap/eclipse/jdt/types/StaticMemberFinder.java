@@ -44,8 +44,8 @@ public class StaticMemberFinder {
 
 	public Stream<ICompletionProposal> find(final IType expectedType, JavaContentAssistInvocationContext context,
 			IProgressMonitor monitor, Duration timeout) {
-		return performSearch(expectedType, context, monitor, timeout).filter(this::onlyPublicStatic)
-				.filter(m -> isMatching(m, expectedType)).map(m -> toCompletionProposal(m, context, monitor))
+		return performSearch(expectedType, context, monitor, timeout)
+				.map(m -> toCompletionProposal(m, context, monitor))
 				.filter(Predicates.notNull());
 	}
 
@@ -194,7 +194,7 @@ public class StaticMemberFinder {
 		final List<IMember> resultAccumerlator = Collections.synchronizedList(new ArrayList<>());
 		final CountDownLatch waiter = new CountDownLatch(1);
 
-		Job job = new Job("Static Member Search Caching") {
+		final Job job = new Job("Static Member Search Caching") {
 
 			@Override
 			protected IStatus run(IProgressMonitor monitor) {
@@ -204,12 +204,14 @@ public class StaticMemberFinder {
 									JavaSearchScope.REFERENCED_PROJECTS | JavaSearchScope.APPLICATION_LIBRARIES
 											| JavaSearchScope.SYSTEM_LIBRARIES | JavaSearchScope.SOURCES),
 							new SearchRequestor() {
-
 								@Override
 								public void acceptSearchMatch(SearchMatch match) throws CoreException {
-									if (match.getAccuracy() == SearchMatch.A_ACCURATE
+									if (match.getAccuracy() == SearchMatch.A_ACCURATE && match.isExact()
 											&& (match.getElement() instanceof IMember)) {
-										resultAccumerlator.add((IMember) match.getElement());
+										final IMember member = (IMember) match.getElement();
+										if(onlyPublicStatic(member) && isMatching(member, expectedType)) {
+											resultAccumerlator.add((IMember) match.getElement());
+										}
 									}
 								}
 
