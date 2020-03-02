@@ -88,12 +88,6 @@
       </specification>
    </extension>
    <extension
-         point="org.eclipse.ui.startup">
-      <startup
-            class="org.gap.eclipse.jdt.StartupTasks">
-      </startup>
-   </extension>
-   <extension
          id="gap.eclipse.jdt.smartSubtype"
          name="Smart Subtype Proposals"
          point="org.eclipse.jdt.ui.javaCompletionProposalComputer">

@@ -228,7 +228,7 @@ public class StaticMemberFinder {
 				return Status.OK_STATUS;
 			}
 		};
-		job.setPriority(Job.INTERACTIVE);
+		job.setPriority(Job.SHORT);
 		job.schedule();
 		try {
 			waiter.await(timeout.toMillis(), TimeUnit.MILLISECONDS);

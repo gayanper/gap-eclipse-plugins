@@ -86,9 +86,13 @@ class CompletionASTVistor extends ASTVisitor {
 			Function<IMethodBinding, List<ITypeBinding>> parameterSupplier,
 			Supplier<IMethodBinding> bindingSupplier) {
 		final List<ASTNode> arguments = argumentSupplier.get();
-
-		IMethodBinding binding = bindingSupplier.get();
-		if (binding != null) {
+		final IMethodBinding binding = bindingSupplier.get();
+		
+		if(binding == null) {
+			return null;
+		}
+		
+		if(arguments.isEmpty()) {
 			List<ITypeBinding> parameters = parameterSupplier.apply(binding);
 			if (!parameters.isEmpty()) {
 				if (binding.isVarargs()) {
@@ -97,35 +101,24 @@ class CompletionASTVistor extends ASTVisitor {
 					return parameters.get(0);
 				}
 			}
-		}
+		} else {
+			int typeIndex = -1;
+			int checkOffset = preceedSpace ? offset - 1 : offset;
 
-		if (arguments.isEmpty() && (binding != null)) {
-			List<ITypeBinding> parameters = parameterSupplier.apply(binding);
-			if (!parameters.isEmpty()) {
-				if (binding.isVarargs()) {
-					return parameters.get(0).getElementType();
-				} else {
-					return parameters.get(0);
+			for (int i = 0; i < arguments.size(); i++) {
+				final ASTNode astNode = arguments.get(i);
+				if (astNode.getStartPosition() <= checkOffset
+						&& (astNode.getStartPosition() + astNode.getLength()) >= checkOffset) {
+					if (!(astNode instanceof ClassInstanceCreation || astNode instanceof MethodInvocation)) {
+						typeIndex = i;
+					}
+					break;
 				}
 			}
-		}
 
-		int typeIndex = -1;
-		int checkOffset = preceedSpace ? offset - 1 : offset;
-
-		for (int i = 0; i < arguments.size(); i++) {
-			final ASTNode astNode = arguments.get(i);
-			if (astNode.getStartPosition() <= checkOffset
-					&& (astNode.getStartPosition() + astNode.getLength()) >= checkOffset) {
-				if (!(astNode instanceof ClassInstanceCreation || astNode instanceof MethodInvocation)) {
-					typeIndex = i;
-				}
-				break;
+			if ((typeIndex > -1) && (binding != null)) {
+				return parameterSupplier.apply(binding).get(typeIndex);
 			}
-		}
-
-		if ((typeIndex > -1) && (binding != null)) {
-			return parameterSupplier.apply(binding).get(typeIndex);
 		}
 		return null;
 	}
