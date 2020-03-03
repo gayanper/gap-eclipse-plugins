@@ -41,34 +41,32 @@ class CompletionASTVistor extends ASTVisitor {
 
 	@Override
 	public boolean visit(ClassInstanceCreation node) {
-		return visitNode(node, Suppliers.memoize(node::arguments),
-				method -> Arrays.asList(method.getParameterTypes()),
+		return visitNode(node, Suppliers.memoize(node::arguments), method -> Arrays.asList(method.getParameterTypes()),
 				Suppliers.memoize(node::resolveConstructorBinding));
 	}
 
 	@Override
 	public boolean visit(MethodInvocation node) {
-		return visitNode(node, Suppliers.memoize(node::arguments),
-				method -> Arrays.asList(method.getParameterTypes()), Suppliers.memoize(node::resolveMethodBinding));
+		return visitNode(node, Suppliers.memoize(node::arguments), method -> Arrays.asList(method.getParameterTypes()),
+				Suppliers.memoize(node::resolveMethodBinding));
 	}
-	
+
 	private boolean visitNode(ASTNode node, Supplier<List<ASTNode>> argumentSupplier,
-			Function<IMethodBinding, List<ITypeBinding>> parameterSupplier,
-			Supplier<IMethodBinding> bindingSupplier) {
+			Function<IMethodBinding, List<ITypeBinding>> parameterSupplier, Supplier<IMethodBinding> bindingSupplier) {
 		final CodeRange current = new CodeRange(node.getStartPosition(), node.getStartPosition() + node.getLength(),
 				node);
 
 		// for varargs they are considered as single parameter methods with a array.
 		int varArgsOffset = preceedSpace ? 2 : 1;
 		final IMethodBinding methodBinding = bindingSupplier.get();
-		if(methodBinding == null) {
+		if (methodBinding == null) {
 			return false;
 		}
-		
-		final int adjustedOffset = methodBinding.isVarargs() ? offset - varArgsOffset : offset;
-		if (current.inRange(adjustedOffset) && (lastVisited == null || lastVisited.inRange(current))) {
-			ITypeBinding typeAtOffset = findParameterTypeAtOffset(argumentSupplier, parameterSupplier,
-					bindingSupplier);
+
+		offset = methodBinding.isVarargs() ? offset - varArgsOffset
+				: offset - (argumentSupplier.get().isEmpty() ? 0 : preceedSpace ? 2 : 1);
+		if (current.inRange(offset) && (lastVisited == null || lastVisited.inRange(current))) {
+			ITypeBinding typeAtOffset = findParameterTypeAtOffset(argumentSupplier, parameterSupplier, bindingSupplier);
 			try {
 				if (typeAtOffset != null) {
 					expectedType = project.findType(Signature.getTypeErasure(typeAtOffset.getQualifiedName()));
@@ -83,17 +81,16 @@ class CompletionASTVistor extends ASTVisitor {
 	}
 
 	private ITypeBinding findParameterTypeAtOffset(Supplier<List<ASTNode>> argumentSupplier,
-			Function<IMethodBinding, List<ITypeBinding>> parameterSupplier,
-			Supplier<IMethodBinding> bindingSupplier) {
+			Function<IMethodBinding, List<ITypeBinding>> parameterSupplier, Supplier<IMethodBinding> bindingSupplier) {
 		final List<ASTNode> arguments = argumentSupplier.get();
 		final IMethodBinding binding = bindingSupplier.get();
-		
-		if(binding == null) {
+
+		if (binding == null) {
 			return null;
 		}
-		
-		if(arguments.isEmpty()) {
-			List<ITypeBinding> parameters = parameterSupplier.apply(binding);
+
+		List<ITypeBinding> parameters = parameterSupplier.apply(binding);
+		if (arguments.isEmpty()) {
 			if (!parameters.isEmpty()) {
 				if (binding.isVarargs()) {
 					return parameters.get(0).getElementType();
@@ -109,15 +106,13 @@ class CompletionASTVistor extends ASTVisitor {
 				final ASTNode astNode = arguments.get(i);
 				if (astNode.getStartPosition() <= checkOffset
 						&& (astNode.getStartPosition() + astNode.getLength()) >= checkOffset) {
-					if (!(astNode instanceof ClassInstanceCreation || astNode instanceof MethodInvocation)) {
-						typeIndex = i;
-					}
+					typeIndex = i + 1;
 					break;
 				}
 			}
 
-			if ((typeIndex > -1) && (binding != null)) {
-				return parameterSupplier.apply(binding).get(typeIndex);
+			if ((typeIndex > -1) && typeIndex < parameters.size() && (binding != null)) {
+				return parameters.get(typeIndex);
 			}
 		}
 		return null;
