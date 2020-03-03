@@ -5,17 +5,15 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
-import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
-import org.eclipse.core.runtime.IStatus;
-import org.eclipse.core.runtime.Status;
-import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.jdt.core.CompletionProposal;
 import org.eclipse.jdt.core.Flags;
 import org.eclipse.jdt.core.IField;
@@ -47,42 +45,6 @@ public class StaticMemberFinder {
 		return performSearch(expectedType, context, monitor, timeout)
 				.map(m -> toCompletionProposal(m, context, monitor))
 				.filter(Predicates.notNull());
-	}
-
-	private boolean isMatching(IMember member, IType expectedType) {
-		try {
-			if (member instanceof IMethod) {
-				return isMatchingMethod((IMethod) member, expectedType);
-			} else if (member instanceof IField) {
-				return isMatchingField((IField) member, expectedType);
-			}
-		} catch (JavaModelException e) {
-			CorePlugin.getDefault().logError(e.getMessage(), e);
-		}
-		return false;
-	}
-
-	private boolean isMatchingField(IField field, IType expectedType) throws JavaModelException {
-		final String erasureSignature = Signature.getTypeErasure(field.getTypeSignature());
-		return resolvedTypeName(field, erasureSignature).filter(expectedType.getFullyQualifiedName()::equals)
-				.isPresent();
-	}
-
-	private boolean isMatchingMethod(IMethod method, IType expectedType) throws JavaModelException {
-		final String erasureSignature = Signature.getTypeErasure(method.getReturnType());
-		return resolvedTypeName(method, erasureSignature)
-				.filter(expectedType.getFullyQualifiedName()::equals)
-				.isPresent();
-	}
-
-	private Optional<String> resolvedTypeName(IMember member, String signature)
-			throws JavaModelException
-	{
-		final String packageName = Signature.getSignatureQualifier(signature);
-		final String className = Signature.getSignatureSimpleName(signature);
-		final String fqn = packageName.isEmpty() ? className : packageName.concat(".").concat(className);
-		final IType declaringType = member.getDeclaringType();
-		return Optional.ofNullable(declaringType.resolveType(fqn, null)).map(v -> v[0]).map(e -> String.join(".", e));
 	}
 
 	private ICompletionProposal toCompletionProposal(IMember member, JavaContentAssistInvocationContext context,
@@ -186,55 +148,50 @@ public class StaticMemberFinder {
 	}
 
 	private Stream<IMember> performSearch(IType expectedType, JavaContentAssistInvocationContext context,
-			IProgressMonitor parentMonitor, Duration timeout) {
+			IProgressMonitor monitor, Duration timeout) {
 		SearchEngine engine = new SearchEngine();
 		SearchPattern pattern = SearchPattern.createPattern(fixInnerType(expectedType.getFullyQualifiedName()),
-				IJavaSearchConstants.TYPE, IJavaSearchConstants.REFERENCES, SearchPattern.R_ERASURE_MATCH);
+				IJavaSearchConstants.TYPE, IJavaSearchConstants.RETURN_TYPE_REFERENCE, SearchPattern.R_EQUIVALENT_MATCH | SearchPattern.R_CASE_SENSITIVE);
 
 		final List<IMember> resultAccumerlator = Collections.synchronizedList(new ArrayList<>());
-		final CountDownLatch waiter = new CountDownLatch(1);
 
-		final Job job = new Job("Static Member Search Caching") {
-
-			@Override
-			protected IStatus run(IProgressMonitor monitor) {
-				try {
-					engine.search(pattern, new SearchParticipant[] { SearchEngine.getDefaultSearchParticipant() },
-							SearchEngine.createJavaSearchScope(new IJavaElement[] { context.getProject() },
-									JavaSearchScope.REFERENCED_PROJECTS | JavaSearchScope.APPLICATION_LIBRARIES
-											| JavaSearchScope.SYSTEM_LIBRARIES | JavaSearchScope.SOURCES),
-							new SearchRequestor() {
-								@Override
-								public void acceptSearchMatch(SearchMatch match) throws CoreException {
-									if (match.getAccuracy() == SearchMatch.A_ACCURATE && match.isExact()
-											&& (match.getElement() instanceof IMember)) {
-										final IMember member = (IMember) match.getElement();
-										if(onlyPublicStatic(member) && isMatching(member, expectedType)) {
-											resultAccumerlator.add((IMember) match.getElement());
-										}
+		final ExecutorService executor= Executors.newSingleThreadExecutor();
+		Future<?> task = executor.submit(() -> {
+			try {
+				engine.search(pattern, new SearchParticipant[] { SearchEngine.getDefaultSearchParticipant() },
+						SearchEngine.createJavaSearchScope(new IJavaElement[] { context.getProject() },
+								JavaSearchScope.REFERENCED_PROJECTS | JavaSearchScope.APPLICATION_LIBRARIES
+										| JavaSearchScope.SYSTEM_LIBRARIES | JavaSearchScope.SOURCES),
+						new SearchRequestor() {
+							@Override
+							public void acceptSearchMatch(SearchMatch match) throws CoreException {
+								if (match.getElement() instanceof IMember) {
+									final IMember member = (IMember) match.getElement();
+									if(onlyPublicStatic(member)) {
+										resultAccumerlator.add((IMember) match.getElement());
 									}
 								}
+							}
 
-								@Override
-								public void endReporting() {
-									waiter.countDown();
-								}
+							@Override
+							public void endReporting() {
+							}
 
-							}, monitor);
-				} catch (CoreException e) {
-					CorePlugin.getDefault().logError(e.getMessage(), e);
-					waiter.countDown();
-				}
-				return Status.OK_STATUS;
+						}, monitor);
+			} catch (CoreException e) {
+				CorePlugin.getDefault().logError(e.getMessage(), e);
 			}
-		};
-		job.setPriority(Job.SHORT);
-		job.schedule();
+		});
+		
+		
 		try {
-			waiter.await(timeout.toMillis(), TimeUnit.MILLISECONDS);
-		} catch (InterruptedException e) {
+			task.get(timeout.getSeconds(), TimeUnit.SECONDS);
+		} catch (Exception e) {
 			CorePlugin.getDefault().logError(e.getMessage(), e);
+		} finally {
+			executor.shutdownNow();
 		}
+		
 		// copy and create a stream.
 		return new ArrayList<>(resultAccumerlator).stream();
 	}
