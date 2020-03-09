@@ -9,6 +9,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -154,7 +155,6 @@ public class StaticMemberFinder {
 				IJavaSearchConstants.TYPE, IJavaSearchConstants.RETURN_TYPE_REFERENCE, SearchPattern.R_EQUIVALENT_MATCH | SearchPattern.R_CASE_SENSITIVE);
 
 		final List<IMember> resultAccumerlator = Collections.synchronizedList(new ArrayList<>());
-
 		final ExecutorService executor= Executors.newSingleThreadExecutor();
 		Future<?> task = executor.submit(() -> {
 			try {
@@ -186,6 +186,8 @@ public class StaticMemberFinder {
 		
 		try {
 			task.get(timeout.getSeconds(), TimeUnit.SECONDS);
+		} catch (TimeoutException e) {
+			// do nothing since we return what we have collected so far.
 		} catch (Exception e) {
 			CorePlugin.getDefault().logError(e.getMessage(), e);
 		} finally {

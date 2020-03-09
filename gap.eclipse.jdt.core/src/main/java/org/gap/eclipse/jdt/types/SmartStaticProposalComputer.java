@@ -28,7 +28,7 @@ public class SmartStaticProposalComputer extends AbstractSmartProposalComputer i
 
 	private StaticMemberFinder staticMemberFinder = new StaticMemberFinder();
 
-	private final static long TIMEOUT = Long.getLong("org.eclipse.jdt.ui.codeAssistTimeout", 5000);
+	private final static long TIMEOUT = Long.getLong("org.gap.eclipse.jdt.types.smartStaticTimeout", 3000);
 
 	@Override
 	public void sessionStarted() {
@@ -55,7 +55,7 @@ public class SmartStaticProposalComputer extends AbstractSmartProposalComputer i
 
 	private List<ICompletionProposal> completionList(IProgressMonitor monitor,
 			JavaContentAssistInvocationContext context, IType expectedType) {
-		final Duration blockDuration = Duration.ofMillis(TIMEOUT).minusSeconds(2);
+		final Duration blockDuration = Duration.ofMillis(TIMEOUT);
 		if (!isPreceedSpaceNewKeyword(context)) {
 			return staticMemberFinder.find(expectedType, context, monitor, blockDuration).collect(Collectors.toList());
 		}
