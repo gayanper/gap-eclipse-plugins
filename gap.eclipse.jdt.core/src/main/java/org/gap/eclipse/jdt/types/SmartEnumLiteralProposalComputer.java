@@ -114,7 +114,7 @@ public class SmartEnumLiteralProposalComputer extends AbstractSmartProposalCompu
 				proposal.setFlags(field.getFlags());
 				float relevance = context.getHistoryRelevance(fullyQualifiedName);
 				proposal.setRelevance((int) (1000 * (relevance < 0.1 ? 0.1 : relevance)));
-				proposal.setReplaceRange(context.getInvocationOffset(), context.getInvocationOffset());
+				proposal.setReplaceRange(context.getInvocationOffset(), ContextUtils.computeEndOffset(context));
 				proposal.setSignature(field.getTypeSignature().toCharArray());
 				proposal.setRequiredProposals(
 						new CompletionProposal[] { createImportProposal(context, field.getDeclaringType()) });

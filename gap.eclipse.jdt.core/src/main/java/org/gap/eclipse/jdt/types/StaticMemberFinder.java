@@ -75,7 +75,7 @@ public class StaticMemberFinder {
 		proposal.setFlags(field.getFlags());
 		float relevance = context.getHistoryRelevance(fullyQualifiedName);
 		proposal.setRelevance((int) (50 * (relevance < 0.1 ? 0.1 : relevance)));
-		proposal.setReplaceRange(context.getInvocationOffset(), context.getInvocationOffset());
+		proposal.setReplaceRange(context.getInvocationOffset(), ContextUtils.computeEndOffset(context));
 		proposal.setSignature(field.getTypeSignature().toCharArray());
 		proposal.setRequiredProposals(
 				new CompletionProposal[] { createImportProposal(context, field.getDeclaringType()) });
@@ -102,7 +102,7 @@ public class StaticMemberFinder {
 		proposal.setFlags(method.getFlags());
 		float relevance = context.getHistoryRelevance(fullyQualifiedName);
 		proposal.setRelevance((int) (100 * (relevance < 0.1 ? 0.1 : relevance)));
-		proposal.setReplaceRange(context.getInvocationOffset(), context.getInvocationOffset());
+		proposal.setReplaceRange(context.getInvocationOffset(), ContextUtils.computeEndOffset(context));
 		proposal.setSignature(method.getSignature().replaceAll("/", ".").toCharArray());
 		proposal.setRequiredProposals(
 				new CompletionProposal[] { createImportProposal(context, method.getDeclaringType()) });
