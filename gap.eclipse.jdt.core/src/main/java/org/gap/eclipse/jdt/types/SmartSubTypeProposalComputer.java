@@ -74,11 +74,11 @@ public class SmartSubTypeProposalComputer extends AbstractSmartProposalComputer
 		ASTNode ast = parser.createAST(monitor);
 		CompletionASTVistor visitor = new CompletionASTVistor(context);
 		ast.accept(visitor);
-		final IType expectedType = visitor.getExpectedType();
-		if (expectedType == null || unsupportedTypes.contains(expectedType.getFullyQualifiedName())) {
-			return Collections.emptyList();
-		}
-		return completionList(monitor, context, expectedType);
+		
+		return visitor.getExpectedTypes().stream()
+			.filter(t -> !unsupportedTypes.contains(t.getFullyQualifiedName()))
+			.flatMap(t -> completionList(monitor, context, t).stream())
+			.collect(Collectors.toList());
 	}
 
 	private boolean isPreceedSpaceNewKeyword(ContentAssistInvocationContext context) {

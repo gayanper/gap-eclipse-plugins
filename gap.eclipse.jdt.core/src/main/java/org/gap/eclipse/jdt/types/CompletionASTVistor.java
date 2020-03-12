@@ -1,9 +1,13 @@
 package org.gap.eclipse.jdt.types;
 
 import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IType;
@@ -15,21 +19,25 @@ import org.eclipse.jdt.core.dom.ClassInstanceCreation;
 import org.eclipse.jdt.core.dom.IMethodBinding;
 import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.MethodInvocation;
+import org.eclipse.jdt.core.dom.Modifier;
 import org.eclipse.jdt.ui.text.java.JavaContentAssistInvocationContext;
 import org.eclipse.jface.text.BadLocationException;
 import org.gap.eclipse.jdt.CorePlugin;
 
+import com.google.common.base.Predicates;
 import com.google.common.base.Suppliers;
+import com.google.common.collect.Sets;
 
 class CompletionASTVistor extends ASTVisitor {
 	private int offset;
-	private IType expectedType;
+	private Set<IType> expectedTypes;
 	private IJavaProject project;
 	private boolean preceedSpace = false;
 
 	private CodeRange lastVisited;
 
 	public CompletionASTVistor(JavaContentAssistInvocationContext context) {
+		this.expectedTypes = new HashSet<>();
 		this.offset = context.getInvocationOffset();
 		this.project = context.getProject();
 		try {
@@ -66,21 +74,25 @@ class CompletionASTVistor extends ASTVisitor {
 		offset = methodBinding.isVarargs() ? offset - varArgsOffset
 				: offset - (argumentSupplier.get().isEmpty() ? 0 : preceedSpace ? 2 : 1);
 		if (current.inRange(offset) && (lastVisited == null || lastVisited.inRange(current))) {
-			ITypeBinding typeAtOffset = findParameterTypeAtOffset(argumentSupplier, parameterSupplier, bindingSupplier);
-			try {
-				if (typeAtOffset != null) {
-					expectedType = project.findType(Signature.getTypeErasure(typeAtOffset.getQualifiedName()));
+			Set<ITypeBinding> typesAtOffset = findParameterTypeAtOffset(argumentSupplier, parameterSupplier, bindingSupplier);
+			typesAtOffset.stream()
+			.map(t -> {
+				try {
+					return project.findType(Signature.getTypeErasure(t.getQualifiedName()));
+				} catch (JavaModelException | IllegalArgumentException e) {
+					CorePlugin.getDefault().logError(e.getMessage(), e);
+					return null;
 				}
-			} catch (JavaModelException e) {
-				CorePlugin.getDefault().logError(e.getMessage(), e);
-			}
+			})
+			.filter(Predicates.notNull())
+			.forEach(t -> expectedTypes.add(t));
 			lastVisited = current;
 			return true;
 		}
 		return false;
 	}
 
-	private ITypeBinding findParameterTypeAtOffset(Supplier<List<ASTNode>> argumentSupplier,
+	private Set<ITypeBinding> findParameterTypeAtOffset(Supplier<List<ASTNode>> argumentSupplier,
 			Function<IMethodBinding, List<ITypeBinding>> parameterSupplier, Supplier<IMethodBinding> bindingSupplier) {
 		final List<ASTNode> arguments = argumentSupplier.get();
 		final IMethodBinding binding = bindingSupplier.get();
@@ -93,9 +105,9 @@ class CompletionASTVistor extends ASTVisitor {
 		if (arguments.isEmpty()) {
 			if (!parameters.isEmpty()) {
 				if (binding.isVarargs()) {
-					return parameters.get(0).getElementType();
+					return Sets.newHashSet(parameters.get(0).getElementType());
 				} else {
-					return parameters.get(0);
+					return Sets.newHashSet(parameters.get(0));
 				}
 			}
 		} else {
@@ -111,14 +123,39 @@ class CompletionASTVistor extends ASTVisitor {
 				}
 			}
 
-			if ((typeIndex > -1) && typeIndex < parameters.size() && (binding != null)) {
-				return parameters.get(typeIndex);
+			if(binding != null) {
+				if ((typeIndex > -1) && typeIndex < parameters.size()) {
+					return Sets.newHashSet(parameters.get(typeIndex));
+				} else if (typeIndex == parameters.size()) {
+					// This might mean we are at a overloaded method. So lets look for overloads.
+					return findFromOverloaded(typeIndex, binding);
+				}
 			}
 		}
 		return null;
 	}
 
-	public IType getExpectedType() {
-		return expectedType;
+	private Set<ITypeBinding> findFromOverloaded(int typeIndex, IMethodBinding binding) {
+		ITypeBinding type = binding.getDeclaringClass();
+     	return Arrays.stream(type.getDeclaredMethods())
+     		.filter(m -> {
+     			return m.getName().equals(binding.getName()) && !Modifier.isPrivate(m.getModifiers());
+     		})
+     		.filter(m -> m.getParameterTypes().length >= typeIndex + 1)
+     		.map(m -> m.getParameterTypes()[typeIndex])
+     		.collect(Collectors.toSet());
 	}
+
+	public Set<IType> getExpectedTypes() {
+		return expectedTypes;
+	}
+	
+	public IType getExpectedType() {
+		Iterator<IType> iterator = expectedTypes.iterator();
+		if(iterator.hasNext()) {
+			return iterator.next();
+		}
+		return null;
+	}
+	
 }

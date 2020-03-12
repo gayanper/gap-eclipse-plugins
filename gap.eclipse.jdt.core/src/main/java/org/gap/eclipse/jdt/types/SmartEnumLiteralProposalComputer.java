@@ -6,9 +6,11 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.jdt.core.CompletionProposal;
+import org.eclipse.jdt.core.Flags;
 import org.eclipse.jdt.core.IField;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IType;
@@ -25,6 +27,7 @@ import org.eclipse.jface.text.contentassist.ICompletionProposal;
 import org.eclipse.jface.text.contentassist.IContextInformation;
 import org.gap.eclipse.jdt.CorePlugin;
 
+import com.google.common.base.Predicates;
 import com.google.common.collect.Sets;
 
 public class SmartEnumLiteralProposalComputer extends AbstractSmartProposalComputer
@@ -75,25 +78,43 @@ public class SmartEnumLiteralProposalComputer extends AbstractSmartProposalCompu
 		ASTNode ast = parser.createAST(monitor);
 		CompletionASTVistor visitor = new CompletionASTVistor(context);
 		ast.accept(visitor);
-		final IType expectedType = visitor.getExpectedType();
-		if (expectedType == null || unsupportedTypes.contains(expectedType.getFullyQualifiedName())) {
-			return Collections.emptyList();
-		}
-
-		try {
-			if (expectedType.isEnum()) {
-				return createEnumProposals(context, expectedType);
-			}
-		} catch (JavaModelException e) {
-			CorePlugin.getDefault().logError(e.getMessage(), e);
-		}
-		return Collections.emptyList();
+		return visitor.getExpectedTypes().stream()
+			.filter(t -> !unsupportedTypes.contains(t.getFullyQualifiedName()))
+			.flatMap(t -> {
+					try {
+						if(t.isInterface()) {
+							return Arrays.stream(t.newTypeHierarchy(monitor).getImplementingClasses(t));
+						}
+					} catch (JavaModelException e) {
+						CorePlugin.getDefault().logError(e.getMessage(), e);
+					}
+					return Stream.empty();
+				})
+			.flatMap(t -> {
+					try {
+						if(t.isEnum()) {
+							return createEnumProposals(context, t).stream();
+						}
+					} catch (JavaModelException e) {
+						CorePlugin.getDefault().logError(e.getMessage(), e);
+					}
+					return null;
+				})
+			.filter(Predicates.notNull())
+			.collect(Collectors.toList());
 	}
 
 	private List<ICompletionProposal> createEnumProposals(JavaContentAssistInvocationContext context,
 			final IType expectedType) throws JavaModelException {
 		Set<IField> literals = Arrays.stream(expectedType.getChildren())
-				.filter(e -> (e.getElementType() == IJavaElement.FIELD) && !e.getElementName().equals("$VALUES"))
+				.filter(e -> {
+					try {
+						return (e.getElementType() == IJavaElement.FIELD) && Flags.isPublic(((IField)e).getFlags()) && !e.getElementName().equals("$VALUES");
+					} catch (JavaModelException e1) {
+						CorePlugin.getDefault().logError(e1.getMessage(), e1);
+					}
+					return false;
+				})
 				.map(e -> (IField) e).collect(Collectors.toSet());
 		return createEnumProposals(literals, context);
 	}
