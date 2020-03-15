@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
-  <groupId>org.gap.eclipse.jdt</groupId>
-  <artifactId>gap.eclipse.jdt</artifactId>
+  <groupId>org.gap.eclipse.plugins</groupId>
+  <artifactId>gap.eclipse.plugins</artifactId>
   <version>2.0.0-SNAPSHOT</version>
   <packaging>pom</packaging>
-  <name>gap.eclipse.jdt :: parent</name>
-  <description>gap.eclipse.jdt parent</description>
+  <name>gap.eclipse.plugins :: parent</name>
+  <description>gap.eclipse.plugins parent</description>
 
   <prerequisites>
     <maven>3.0</maven>
@@ -148,6 +148,6 @@
   <modules>
     <module>gap.eclipse.jdt.core</module>
     <module>gap.eclipse.jdt.feature</module>
-    <module>gap.eclipse.jdt.site</module>
+    <module>gap.eclipse.plugins.site</module>
   </modules>
 </project>
