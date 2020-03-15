@@ -12,7 +12,9 @@ Require-Bundle: org.eclipse.ui,
  com.google.guava,
  org.eclipse.core.resources,
  org.eclipse.jdt.core.manipulation,
- org.eclipse.ui.editors
+ org.eclipse.ui.editors,
+ org.eclipse.ui.workbench.texteditor,
+ org.eclipse.search
 Bundle-ActivationPolicy: lazy
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Import-Package: com.google.common.base;version="15.0.0",
