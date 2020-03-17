@@ -149,5 +149,7 @@
     <module>gap.eclipse.jdt.core</module>
     <module>gap.eclipse.jdt.feature</module>
     <module>gap.eclipse.plugins.site</module>
+    <module>gap.eclipse.ide.core</module>
+    <module>gap.eclipse.ide.feature</module>
   </modules>
 </project>
