@@ -63,8 +63,9 @@ public abstract class BaseProjectHandler extends AbstractHandler {
 
 	@SuppressWarnings("unchecked")
 	protected List<IProject> resolve(IStructuredSelection selection) {
-		return Lists
-				.newArrayList(Iterators.transform(selection.iterator(), o -> (IProject) o));
+		List<IProject> projects = new ArrayList<>();
+		selection.forEach(p -> projects.add((IProject) p));
+		return projects;
 	}
 
 	protected void log(CoreException e, IProject p) {
