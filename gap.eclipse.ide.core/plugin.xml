@@ -2,121 +2,86 @@
 <?eclipse version="3.4"?>
 <plugin>
    <extension
-         id="gap.eclipse.jdt.smartStatic"
-         name="Smart Static Proposals"
-         point="org.eclipse.jdt.ui.javaCompletionProposalComputer">
-		<javaCompletionProposalComputer
-        activate="false"
-        categoryId="gap.eclipse.jdt.proposalCategory.smartStatic"
-        class="org.gap.eclipse.jdt.types.SmartStaticProposalComputer"
-        requiresUIThread="false">
-  </javaCompletionProposalComputer>
-   </extension>
-   <extension
-         point="org.eclipse.ui.bindings">
-      <key
-            commandId="org.eclipse.jdt.ui.specific_content_assist.command"
-            contextId="org.eclipse.ui.contexts.dialogAndWindow"
-            schemeId="org.eclipse.ui.defaultAcceleratorConfiguration"
-            sequence="M2+M3+M1+SPACE">
-         <parameter
-               id="org.eclipse.jdt.ui.specific_content_assist.category_id"
-               value="gap.eclipse.jdt.proposalCategory.smartStatic">
-         </parameter>
-      </key>
-      <key
-            commandId="gap.eclipse.jdt.core.open"
-            contextId="org.eclipse.ui.contexts.dialogAndWindow"
-            schemeId="org.eclipse.ui.defaultAcceleratorConfiguration"
-            sequence="M2+M3+M1+S">
-      </key>
+         point="org.eclipse.ui.menus">
+      <menuContribution
+            allPopups="false"
+            locationURI="popup:org.eclipse.ui.navigator.ProjectExplorer#PopupMenu?after=additions">
+         <menu
+               id="gap.eclipse.ide.core.projectActions"
+               label="Project Actions">
+            <visibleWhen
+                  checkEnabled="false">
+               <with
+                     variable="activeMenuSelection">
+                  <iterate
+                        ifEmpty="false"
+                        operator="or">
+                     <or>
+                        <instanceof
+                              value="org.eclipse.core.resources.IProject">
+                        </instanceof></or>
+                  </iterate>
+               </with>
+            </visibleWhen>
+            <command
+                  commandId="gap.eclipse.ide.core.closenested"
+                  label="Close Hierarchy"
+                  style="push">
+	             <visibleWhen checkEnabled="false">
+	               <with variable="activeMenuSelection">
+	               	<iterate
+                       ifEmpty="false">
+                 <and>
+                    <test
+                          property="org.eclipse.core.resources.open"
+                          value="true">
+                    </test>
+                    <instanceof
+                          value="org.eclipse.core.resources.IProject">
+                    </instanceof></and>
+	               	</iterate>
+	               </with>
+	                   
+	             </visibleWhen>
+                  
+            </command>
+            <command
+                  commandId="gap.eclipse.ide.core.opennested"
+                  label="Open Hierarchy"
+                  style="push">
+	             <visibleWhen checkEnabled="false">
+	               <with variable="activeMenuSelection">
+	               	<iterate
+                       ifEmpty="false">
+                 <and>
+                    <test
+                          property="org.eclipse.core.resources.open"
+                          value="false">
+                    </test>
+                    <instanceof
+                          value="org.eclipse.core.resources.IProject">
+                    </instanceof></and>
+	               	</iterate>
+	               </with>
+	                   
+	             </visibleWhen>
+            </command>
+         </menu>
+      </menuContribution>
    </extension>
    <extension
          point="org.eclipse.ui.commands">
       <command
-            categoryId="org.eclipse.ui.category.navigate"
-            defaultHandler="org.gap.eclipse.jdt.symbol.OpenSymbolCommand"
-            id="gap.eclipse.jdt.core.open"
-            name="Open Symbol">
+            categoryId="org.eclipse.ui.category.project"
+            defaultHandler="org.gap.eclipse.ide.projects.CloseNestedProjectsHandler"
+            id="gap.eclipse.ide.core.closenested"
+            name="Close Hierarchy">
       </command>
-   </extension>
-   <extension
-         point="org.eclipse.jdt.core.compilationParticipant">
-         <compilationParticipant 
-         	class="org.gap.eclipse.jdt.annotation.MarkerParticipant"
-         	id="gap.eclipse.jdt.markers" >
-         </compilationParticipant>
-   </extension>
-   <extension
-         id="gap.eclipse.jdt.markers.recursive"
-         name="Method Recursion"
-         point="org.eclipse.core.resources.markers">
-      <super
-            type="org.eclipse.core.resources.textmarker">
-      </super>
-         
-   </extension>
-   <extension
-         point="org.eclipse.ui.editors.annotationTypes">
-      <type
-            markerType="gap.eclipse.jdt.markers.recursive"
-            name="gap.eclipse.jdt.annotation.recursive">
-      </type>
-   </extension>
-   <extension
-         point="org.eclipse.ui.editors.markerAnnotationSpecification">
-      <specification
-            annotationType="gap.eclipse.jdt.annotation.recursive"
-            colorPreferenceKey="gap.eclipse.jdt.annotation.recursive.color"
-            colorPreferenceValue="75,55,10"
-            contributesToHeader="false"
-            highlightPreferenceKey="gap.eclipse.jdt.annotation.recursive.highlight"
-            highlightPreferenceValue="true"
-            icon="icons/view16/recursion.png"
-            isGoToNextNavigationTarget="false"
-            label="Recursion"
-            overviewRulerPreferenceKey="gap.eclipse.jdt.annotation.recursive.overviewruler"
-            overviewRulerPreferenceValue="true"
-            presentationLayer="0"
-            showInNextPrevDropdownToolbarAction="false"
-            textPreferenceKey="gap.eclipse.jdt.annotation.recursive.text"
-            textPreferenceValue="true"
-            textStylePreferenceKey="gap.eclipse.jdt.annotation.recursive.textStyle"
-            textStylePreferenceValue="NONE"
-            verticalRulerPreferenceKey="gap.eclipse.jdt.annotation.recursive.verticalruler"
-            verticalRulerPreferenceValue="true">
-      </specification>
-   </extension>
-   <extension
-         id="gap.eclipse.jdt.smartSubtype"
-         name="Smart Subtype Proposals"
-         point="org.eclipse.jdt.ui.javaCompletionProposalComputer">
-		<javaCompletionProposalComputer
-        activate="false"
-        categoryId="gap.eclipse.jdt.proposalCategory.smartSubtype"
-        class="org.gap.eclipse.jdt.types.SmartSubTypeProposalComputer"
-        requiresUIThread="false">
-		 </javaCompletionProposalComputer>
-   </extension>
-   <extension
-         id="gap.eclipse.jdt.smartEnum"
-         name="Smart Enum Proposals"
-         point="org.eclipse.jdt.ui.javaCompletionProposalComputer">
-		<javaCompletionProposalComputer
-        activate="false"
-        categoryId="gap.eclipse.jdt.proposalCategory.smartEnum"
-        class="org.gap.eclipse.jdt.types.SmartEnumLiteralProposalComputer"
-        requiresUIThread="false">
-		 </javaCompletionProposalComputer>
-   </extension>
-   <extension
-         point="org.eclipse.ui.workbench.texteditor.hyperlinkDetectors">
-      <hyperlinkDetector
-            activate="true"
-            class="org.gap.eclipse.jdt.hyperlinks.JavaReferenceHyperlinkDetector"
-            id="gap.eclipse.jdt.core.referenceHyperlinkDetector"
-            name="Open References"
-            targetId="org.eclipse.jdt.ui.javaCode">
-      </hyperlinkDetector>
+      <command
+            categoryId="org.eclipse.ui.category.project"
+            defaultHandler="org.gap.eclipse.ide.projects.OpenNestedProjectsHandler"
+            id="gap.eclipse.ide.core.opennested"
+            name="Open Hierarchy">
+      </command>
    </extension>
 </plugin>

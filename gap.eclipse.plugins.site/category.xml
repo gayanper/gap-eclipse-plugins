@@ -3,5 +3,8 @@
    <feature id="gap.eclipse.jdt.feature">
       <category name="gap.eclipse.plugins.core"/>
    </feature>
+   <feature id="gap.eclipse.ide.feature">
+      <category name="gap.eclipse.plugins.core"/>
+   </feature>
    <category-def name="gap.eclipse.plugins.core" label="Gap Eclipse Core Features"/>
 </site>

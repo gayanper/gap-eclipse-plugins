@@ -5,7 +5,8 @@ Bundle-SymbolicName: gap.eclipse.ide.core;singleton:=true
 Bundle-Version: 2.0.0.qualifier
 Bundle-Activator: org.gap.eclipse.ide.CorePlugin
 Require-Bundle: org.eclipse.ui,
- org.eclipse.core.runtime;bundle-version="3.17.100"
+ org.eclipse.core.runtime;bundle-version="3.17.100",
+ org.eclipse.core.resources
 Bundle-ActivationPolicy: lazy
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Import-Package: com.google.common.base;version="15.0.0",
