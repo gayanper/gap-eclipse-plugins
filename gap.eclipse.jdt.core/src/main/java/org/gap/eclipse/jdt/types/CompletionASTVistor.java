@@ -1,6 +1,7 @@
 package org.gap.eclipse.jdt.types;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -98,7 +99,7 @@ class CompletionASTVistor extends ASTVisitor {
 		final IMethodBinding binding = bindingSupplier.get();
 
 		if (binding == null) {
-			return null;
+			return Collections.emptySet();
 		}
 
 		List<ITypeBinding> parameters = parameterSupplier.apply(binding);
@@ -132,7 +133,7 @@ class CompletionASTVistor extends ASTVisitor {
 				}
 			}
 		}
-		return null;
+		return Collections.emptySet();
 	}
 
 	private Set<ITypeBinding> findFromOverloaded(int typeIndex, IMethodBinding binding) {
