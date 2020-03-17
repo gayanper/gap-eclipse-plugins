@@ -66,6 +66,29 @@
 	                   
 	             </visibleWhen>
             </command>
+            <command
+                  commandId="gap.eclipse.ide.core.cleannested"
+                  label="Clean Hierarchy"
+                  style="push">
+               <visibleWhen
+                     checkEnabled="false">
+                  <with
+                        variable="activeMenuSelection">
+                     <iterate
+                           ifEmpty="false">
+                        <and>
+                           <test
+                                 property="org.eclipse.core.resources.open"
+                                 value="true">
+                           </test>
+                           <instanceof
+                                 value="org.eclipse.core.resources.IProject">
+                           </instanceof>
+                        </and>
+                     </iterate>
+                  </with>
+               </visibleWhen>
+            </command>
          </menu>
       </menuContribution>
    </extension>
@@ -82,6 +105,12 @@
             defaultHandler="org.gap.eclipse.ide.projects.OpenNestedProjectsHandler"
             id="gap.eclipse.ide.core.opennested"
             name="Open Hierarchy">
+      </command>
+      <command
+            categoryId="org.eclipse.ui.category.project"
+            defaultHandler="org.gap.eclipse.ide.projects.CleanNestedProjectHandler"
+            id="gap.eclipse.ide.core.cleannested"
+            name="Clean Hierarchy">
       </command>
    </extension>
 </plugin>
