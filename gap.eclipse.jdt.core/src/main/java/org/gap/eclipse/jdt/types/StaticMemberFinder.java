@@ -4,7 +4,8 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -103,7 +104,7 @@ public class StaticMemberFinder {
 		proposal.setFlags(method.getFlags());
 		float relevance = context.getHistoryRelevance(fullyQualifiedName);
 		proposal.setRelevance((int) (100 * (relevance < 0.1 ? 0.1 : relevance)));
-		proposal.setReplaceRange(context.getInvocationOffset(), ContextUtils.computeEndOffset(context));
+		proposal.setReplaceRange(ContextUtils.computeInvocationOffset(context), ContextUtils.computeEndOffset(context));
 		proposal.setSignature(method.getSignature().replaceAll("/", ".").toCharArray());
 		proposal.setRequiredProposals(
 				new CompletionProposal[] { createImportProposal(context, method.getDeclaringType()) });
@@ -147,18 +148,25 @@ public class StaticMemberFinder {
 			return false;
 		}
 	}
-
+	
+	@SuppressWarnings("deprecation")
 	private Stream<IMember> performSearch(IType expectedType, JavaContentAssistInvocationContext context,
 			IProgressMonitor monitor, Duration timeout) {
 		SearchEngine engine = new SearchEngine();
 		SearchPattern pattern = SearchPattern.createPattern(fixInnerType(expectedType.getFullyQualifiedName()),
-				IJavaSearchConstants.TYPE, IJavaSearchConstants.RETURN_TYPE_REFERENCE, SearchPattern.R_EQUIVALENT_MATCH | SearchPattern.R_CASE_SENSITIVE);
-
-		final List<IMember> resultAccumerlator = Collections.synchronizedList(new ArrayList<>());
+				IJavaSearchConstants.TYPE, IJavaSearchConstants.REFERENCES, SearchPattern.R_EQUIVALENT_MATCH | SearchPattern.R_CASE_SENSITIVE);
+		if(context.getCoreContext().getToken().length > 0) {
+			SearchPattern tokenPattern = SearchPattern.createPattern(new String(context.getCoreContext().getToken()).concat("*"), 
+					IJavaSearchConstants.METHOD, IJavaSearchConstants.DECLARATIONS, SearchPattern.R_PATTERN_MATCH);
+			pattern = SearchPattern.createAndPattern(pattern, tokenPattern);
+		}
+		final SearchPattern finalPattern = pattern;
+		
+		final Set<IMember> resultAccumerlator = Collections.synchronizedSet(new HashSet<>());
 		final ExecutorService executor= Executors.newSingleThreadExecutor();
 		Future<?> task = executor.submit(() -> {
 			try {
-				engine.search(pattern, new SearchParticipant[] { SearchEngine.getDefaultSearchParticipant() },
+				engine.search(finalPattern, new SearchParticipant[] { SearchEngine.getDefaultSearchParticipant() },
 						SearchEngine.createJavaSearchScope(new IJavaElement[] { context.getProject() },
 								JavaSearchScope.REFERENCED_PROJECTS | JavaSearchScope.APPLICATION_LIBRARIES
 										| JavaSearchScope.SYSTEM_LIBRARIES | JavaSearchScope.SOURCES),
