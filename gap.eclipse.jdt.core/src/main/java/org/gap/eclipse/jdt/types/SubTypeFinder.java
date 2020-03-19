@@ -5,15 +5,17 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Stream;
 
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
-import org.eclipse.core.runtime.IStatus;
-import org.eclipse.core.runtime.Status;
-import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.jdt.core.CompletionProposal;
+import org.eclipse.jdt.core.Flags;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.JavaCore;
@@ -33,6 +35,14 @@ public class SubTypeFinder {
 	public Stream<ICompletionProposal> find(final IType expectedType, JavaContentAssistInvocationContext context,
 			IProgressMonitor monitor, Duration timeout) {
 		return performSearch(expectedType, context, monitor, timeout)
+				.filter(t -> {
+					try {
+						return !Flags.isAbstract(t.getFlags()) && Flags.isPublic(t.getFlags());
+					} catch (JavaModelException e) {
+						CorePlugin.getDefault().logError(e.getMessage(), e);
+					}
+					return false;
+				})
 				.map(m -> toCompletionProposal(m, context, monitor)).filter(Predicates.notNull());
 	}
 
@@ -67,32 +77,27 @@ public class SubTypeFinder {
 	}
 
 	private Stream<IType> performSearch(IType expectedType, JavaContentAssistInvocationContext context,
-			IProgressMonitor monitor,
-			Duration timeout) {
+			IProgressMonitor monitor, Duration timeout) {
 		final List<IType> resultAccumerlator = Collections.synchronizedList(new ArrayList<>());
-		final CountDownLatch waiter = new CountDownLatch(1);
 
-		Job job = new Job("Static Member Search Caching") {
-
-			@Override
-			protected IStatus run(IProgressMonitor monitor) {
-				try {
-					IType[] subtypes = expectedType.newTypeHierarchy(monitor).getAllSubtypes(expectedType);
-					resultAccumerlator.addAll(Arrays.asList(subtypes));
-				} catch (JavaModelException e) {
-					CorePlugin.getDefault().logError(e.getMessage(), e);
-				} finally {
-					waiter.countDown();
-				}
-				return Status.OK_STATUS;
+		final ExecutorService executor = Executors.newSingleThreadExecutor();
+		Future<?> task = executor.submit(() -> {
+			try {
+				IType[] subtypes = expectedType.newTypeHierarchy(monitor).getAllSubtypes(expectedType);
+				resultAccumerlator.addAll(Arrays.asList(subtypes));
+			} catch (CoreException e) {
+				CorePlugin.getDefault().logError(e.getMessage(), e);
 			}
-		};
-		job.setPriority(Job.INTERACTIVE);
-		job.schedule();
+		});
+
 		try {
-			waiter.await(timeout.toMillis(), TimeUnit.MILLISECONDS);
-		} catch (InterruptedException e) {
+			task.get(timeout.getSeconds(), TimeUnit.SECONDS);
+		} catch (TimeoutException e) {
+			// do nothing since we return what we have collected so far.
+		} catch (Exception e) {
 			CorePlugin.getDefault().logError(e.getMessage(), e);
+		} finally {
+			executor.shutdownNow();
 		}
 		return new ArrayList<>(resultAccumerlator).stream(); // copy and create the stream.
 	}

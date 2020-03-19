@@ -30,7 +30,7 @@ public class SmartSubTypeProposalComputer extends AbstractSmartProposalComputer
 
 	private SubTypeFinder subTypeFinder = new SubTypeFinder();
 
-	private final static long TIMEOUT = Long.getLong("org.eclipse.jdt.ui.codeAssistTimeout", 5000);
+	private final static long TIMEOUT = Long.getLong("org.gap.eclipse.jdt.types.smartSubtypeTimeout", 3000);
 
 	@Override
 	public void sessionStarted() {
@@ -60,9 +60,8 @@ public class SmartSubTypeProposalComputer extends AbstractSmartProposalComputer
 
 	private List<ICompletionProposal> completionList(IProgressMonitor monitor,
 			JavaContentAssistInvocationContext context, IType expectedType) {
-		final Duration blockDuration = Duration.ofMillis(TIMEOUT).minusSeconds(2);
 		if (isPreceedSpaceNewKeyword(context)) {
-			return subTypeFinder.find(expectedType, context, monitor, blockDuration).collect(Collectors.toList());
+			return subTypeFinder.find(expectedType, context, monitor, Duration.ofMillis(TIMEOUT)).collect(Collectors.toList());
 		}
 		return Collections.emptyList();
 	}
