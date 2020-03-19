@@ -38,6 +38,10 @@ public class SmartStaticProposalComputer extends AbstractSmartProposalComputer i
 	@Override
 	public List<ICompletionProposal> computeCompletionProposals(ContentAssistInvocationContext invocationContext,
 			IProgressMonitor monitor) {
+		if(!shouldCompute(invocationContext)) {
+			return Collections.emptyList();
+		}
+		
 		if (invocationContext instanceof JavaContentAssistInvocationContext) {
 			JavaContentAssistInvocationContext context = (JavaContentAssistInvocationContext) invocationContext;
 			if (context.getExpectedType() != null) {

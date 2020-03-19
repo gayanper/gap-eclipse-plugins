@@ -4,7 +4,10 @@ import org.eclipse.jdt.core.CompletionProposal;
 import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.Signature;
+import org.eclipse.jdt.ui.text.java.ContentAssistInvocationContext;
 import org.eclipse.jdt.ui.text.java.JavaContentAssistInvocationContext;
+import org.eclipse.jface.text.BadLocationException;
+import org.gap.eclipse.jdt.CorePlugin;
 
 public class AbstractSmartProposalComputer {
 
@@ -24,5 +27,13 @@ public class AbstractSmartProposalComputer {
 
 		return proposal;
 	}
-
+	
+	protected boolean shouldCompute(ContentAssistInvocationContext context) {
+		try {
+			return !".".equals(context.getDocument().get(context.getInvocationOffset() - 1, 1));
+		} catch (BadLocationException e) {
+			CorePlugin.getDefault().logError(e.getMessage(), e);
+			return false;
+		}
+	}
 }

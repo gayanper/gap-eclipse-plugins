@@ -44,7 +44,10 @@ public class SmartEnumLiteralProposalComputer extends AbstractSmartProposalCompu
 	@Override
 	public List<ICompletionProposal> computeCompletionProposals(ContentAssistInvocationContext invocationContext,
 			IProgressMonitor monitor) {
-
+		if(!shouldCompute(invocationContext)) {
+			return Collections.emptyList();
+		}
+		
 		if (invocationContext instanceof JavaContentAssistInvocationContext) {
 			JavaContentAssistInvocationContext context = (JavaContentAssistInvocationContext) invocationContext;
 			if (context.getExpectedType() != null) {
@@ -88,7 +91,7 @@ public class SmartEnumLiteralProposalComputer extends AbstractSmartProposalCompu
 					} catch (JavaModelException e) {
 						CorePlugin.getDefault().logError(e.getMessage(), e);
 					}
-					return Stream.empty();
+					return Stream.of(t);
 				})
 			.flatMap(t -> {
 					try {
