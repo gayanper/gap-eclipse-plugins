@@ -56,7 +56,7 @@ public class SubTypeFinder {
 			proposal.setDeclarationSignature(type.getPackageFragment().getElementName().toCharArray());
 			proposal.setFlags(type.getFlags());
 			float relevance = context.getHistoryRelevance(fullyQualifiedName);
-			proposal.setRelevance((int) (10 * (relevance < 0.1 ? 0.1 : relevance)));
+			proposal.setRelevance((int) (1000 * (relevance < 0.1 ? 0.1 : relevance)));
 			proposal.setReplaceRange(context.getInvocationOffset(), ContextUtils.computeEndOffset(context));
 			proposal.setSignature(Signature.createTypeSignature(fullyQualifiedName, true).toCharArray());
 
