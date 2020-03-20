@@ -35,7 +35,7 @@ class JavaReferenceHyperlink implements IHyperlink {
 
 	@Override
 	public String getHyperlinkText() {
-		return Messages.Hyperlink_FindReference;
+		return Messages.Hyperlink_OpenReference;
 	}
 
 	@Override

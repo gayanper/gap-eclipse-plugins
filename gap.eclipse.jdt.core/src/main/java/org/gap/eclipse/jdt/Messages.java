@@ -4,7 +4,7 @@ import org.eclipse.osgi.util.NLS;
 
 public class Messages extends NLS {
 	private static final String BUNDLE_NAME = "org.gap.eclipse.jdt.messages"; //$NON-NLS-1$
-	public static String Hyperlink_FindReference;
+	public static String Hyperlink_OpenReference;
 	public static String Hyperlink_SearchDescription;
 	static {
 		// initialize resource bundle
