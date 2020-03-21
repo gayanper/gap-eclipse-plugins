@@ -14,11 +14,12 @@ Require-Bundle: org.eclipse.ui,
  org.eclipse.jdt.core.manipulation,
  org.eclipse.ui.editors,
  org.eclipse.ui.workbench.texteditor,
- org.eclipse.search
+ org.eclipse.search,
+ org.eclipse.jdt.debug,
+ org.eclipse.debug.core
 Bundle-ActivationPolicy: lazy
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Import-Package: com.google.common.base;version="15.0.0",
  com.google.common.collect;version="15.0.0"
-Bundle-ClassPath: lib/reactive-streams.jar,
- lib/reactor-core.jar,
- .
+Bundle-ClassPath: .,
+ lib/gson.jar

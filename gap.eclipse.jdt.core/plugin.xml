@@ -37,7 +37,7 @@
             categoryId="org.eclipse.ui.category.navigate"
             defaultHandler="org.gap.eclipse.jdt.symbol.OpenSymbolCommand"
             id="gap.eclipse.jdt.core.open"
-            name="Open Symbol">
+            name="%openSymbol">
       </command>
    </extension>
    <extension
@@ -115,7 +115,7 @@
             activate="true"
             class="org.gap.eclipse.jdt.hyperlinks.JavaReferenceHyperlinkDetector"
             id="gap.eclipse.jdt.core.referenceHyperlinkDetector"
-            name="Open References"
+            name="%openReferences"
             targetId="org.eclipse.jdt.ui.javaCode">
       </hyperlinkDetector>
    </extension>
@@ -127,5 +127,18 @@
             name="String Format Asist Processor"
             requiredSourceLevel="1.5">
       </quickAssistProcessor>
+   </extension>
+   <extension
+         point="org.eclipse.ui.popupMenus">
+      <viewerContribution
+            id="org.eclipse.debug.ui.variablesView.popupMenu"
+            targetID="org.eclipse.debug.ui.VariableView">
+         <action
+               class="org.gap.eclipse.jdt.debug.DumpVariableAction"
+               id="gap.eclipse.jdt.core.debugview.saveVariable"
+               label="%saveToDisk"
+               menubarPath="additions">
+         </action>
+      </viewerContribution>
    </extension>
 </plugin>
