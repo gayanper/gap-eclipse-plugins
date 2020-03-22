@@ -3,7 +3,6 @@ package org.gap.eclipse.jdt.types;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.eclipse.core.runtime.IProgressMonitor;
@@ -19,14 +18,10 @@ import org.eclipse.jface.text.contentassist.ICompletionProposal;
 import org.eclipse.jface.text.contentassist.IContextInformation;
 import org.gap.eclipse.jdt.CorePlugin;
 
-import com.google.common.collect.Sets;
-
 public class SmartSubTypeProposalComputer extends AbstractSmartProposalComputer
 		implements IJavaCompletionProposalComputer {
 
 	public static final String CATEGORY_ID = "gap.eclipse.jdt.proposalCategory.smartSubType";
-	private Set<String> unsupportedTypes = Sets.newHashSet("java.lang.String", "java.lang.Object",
-			"java.lang.Cloneable", "java.lang.Throwable", "java.lang.Exception");
 
 	private SubTypeFinder subTypeFinder = new SubTypeFinder();
 
@@ -47,7 +42,7 @@ public class SmartSubTypeProposalComputer extends AbstractSmartProposalComputer
 			JavaContentAssistInvocationContext context = (JavaContentAssistInvocationContext) invocationContext;
 			if (context.getExpectedType() != null) {
 				IType expectedType = context.getExpectedType();
-				if (unsupportedTypes.contains(expectedType.getFullyQualifiedName())) {
+				if (isUnsupportedType(expectedType.getFullyQualifiedName())) {
 					return Collections.emptyList();
 				}
 				return completionList(monitor, context, expectedType);
@@ -79,7 +74,7 @@ public class SmartSubTypeProposalComputer extends AbstractSmartProposalComputer
 		ast.accept(visitor);
 		
 		return visitor.getExpectedTypes().stream()
-			.filter(t -> !unsupportedTypes.contains(t.getFullyQualifiedName()))
+			.filter(t -> !isUnsupportedType(t.getFullyQualifiedName()))
 			.flatMap(t -> completionList(monitor, context, t).stream())
 			.collect(Collectors.toList());
 	}

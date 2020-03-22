@@ -28,14 +28,11 @@ import org.eclipse.jface.text.contentassist.IContextInformation;
 import org.gap.eclipse.jdt.CorePlugin;
 
 import com.google.common.base.Predicates;
-import com.google.common.collect.Sets;
 
 public class SmartEnumLiteralProposalComputer extends AbstractSmartProposalComputer
 		implements IJavaCompletionProposalComputer {
 
 	public static final String CATEGORY_ID = "gap.eclipse.jdt.proposalCategory.smartEnum";
-	private Set<String> unsupportedTypes = Sets.newHashSet("java.lang.String", "java.lang.Object",
-			"java.lang.Cloneable", "java.lang.Throwable", "java.lang.Exception");
 
 	@Override
 	public void sessionStarted() {
@@ -52,7 +49,7 @@ public class SmartEnumLiteralProposalComputer extends AbstractSmartProposalCompu
 			JavaContentAssistInvocationContext context = (JavaContentAssistInvocationContext) invocationContext;
 			if (context.getExpectedType() != null) {
 				IType expectedType = context.getExpectedType();
-				if (unsupportedTypes.contains(expectedType.getFullyQualifiedName())) {
+				if (isUnsupportedType(expectedType.getFullyQualifiedName())) {
 					return Collections.emptyList();
 				}
 
@@ -82,7 +79,7 @@ public class SmartEnumLiteralProposalComputer extends AbstractSmartProposalCompu
 		CompletionASTVistor visitor = new CompletionASTVistor(context);
 		ast.accept(visitor);
 		return visitor.getExpectedTypes().stream()
-			.filter(t -> !unsupportedTypes.contains(t.getFullyQualifiedName()))
+			.filter(t -> !isUnsupportedType(t.getFullyQualifiedName()))
 			.flatMap(t -> {
 					try {
 						if(t.isInterface()) {
