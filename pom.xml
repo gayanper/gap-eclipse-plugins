@@ -24,9 +24,14 @@
 
   <repositories>
     <repository>
-      <id>luna</id>
+      <id>release</id>
       <layout>p2</layout>
       <url>http://download.eclipse.org/releases/2019-12</url>
+    </repository>
+    <repository>
+    	<id>updates</id>
+    	<layout>p2</layout>
+    	<url>http://download.eclipse.org/eclipse/updates/4.14</url>
     </repository>
   </repositories>
   <build>
@@ -151,5 +156,6 @@
     <module>gap.eclipse.plugins.site</module>
     <module>gap.eclipse.ide.core</module>
     <module>gap.eclipse.ide.feature</module>
+    <module>gap.eclipse.jdt.test</module>
   </modules>
 </project>
