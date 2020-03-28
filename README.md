@@ -1,3 +1,6 @@
+# For Viewers
+**This plugin needs lot of refactoring, this is still in early exprimental level.**
+
 This project is built using Eclipse Tycho (https://www.eclipse.org/tycho/) and requires at least maven 3.0 (http://maven.apache.org/download.html) to be built via CLI. 
 Simply run :
 
