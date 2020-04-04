@@ -37,8 +37,13 @@ class CompletionASTVistor extends ASTVisitor {
 	private Set<IType> expectedTypes;
 	private IJavaProject project;
 	private boolean preceedSpace = false;
+	private ASTNode lastFoundNode;
+	private boolean doneProcessing = false;
 
 	private CodeRange lastVisited;
+	private Supplier<List<ASTNode>> argumentSupplier;
+	private Function<IMethodBinding, List<ITypeBinding>> parameterSupplier;
+	private Supplier<IMethodBinding> bindingSupplier;
 
 	public CompletionASTVistor(JavaContentAssistInvocationContext context) {
 		this.expectedTypes = new HashSet<>();
@@ -53,18 +58,22 @@ class CompletionASTVistor extends ASTVisitor {
 
 	@Override
 	public boolean visit(ClassInstanceCreation node) {
-		return visitNode(node, Suppliers.memoize(node::arguments), method -> Arrays.asList(method.getParameterTypes()),
-				Suppliers.memoize(node::resolveConstructorBinding));
+		argumentSupplier = Suppliers.memoize(node::arguments);
+		parameterSupplier = method -> Arrays.asList(method.getParameterTypes());
+		bindingSupplier = Suppliers.memoize(node::resolveConstructorBinding);
+		
+		return visitNode(node);
 	}
 
 	@Override
 	public boolean visit(MethodInvocation node) {
-		return visitNode(node, Suppliers.memoize(node::arguments), method -> Arrays.asList(method.getParameterTypes()),
-				Suppliers.memoize(node::resolveMethodBinding));
+		argumentSupplier = Suppliers.memoize(node::arguments);
+		parameterSupplier = method -> Arrays.asList(method.getParameterTypes());
+		bindingSupplier = Suppliers.memoize(node::resolveMethodBinding);
+		return visitNode(node);
 	}
 
-	private boolean visitNode(ASTNode node, Supplier<List<ASTNode>> argumentSupplier,
-			Function<IMethodBinding, List<ITypeBinding>> parameterSupplier, Supplier<IMethodBinding> bindingSupplier) {
+	private boolean visitNode(Expression node) {
 		final CodeRange current = new CodeRange(node.getStartPosition(), node.getStartPosition() + node.getLength(),
 				node);
 
@@ -74,36 +83,54 @@ class CompletionASTVistor extends ASTVisitor {
 		}
 
 		if (current.inRange(offset) && (lastVisited == null || lastVisited.inRange(current))) {
-			Set<ITypeBinding> typesAtOffset = findParameterTypeAtOffset(argumentSupplier, parameterSupplier,
-					bindingSupplier, getDeclaringType(node));
-			typesAtOffset.stream().map(t -> {
-				try {
-					return project.findType(Signature.getTypeErasure(t.getQualifiedName()));
-				} catch (JavaModelException | IllegalArgumentException e) {
-					CorePlugin.getDefault().logError(e.getMessage(), e);
-					return null;
-				}
-			}).filter(Predicates.notNull()).forEach(t -> expectedTypes.add(t));
 			lastVisited = current;
+			lastFoundNode = node;
 			return true;
 		}
-		return false;
+		return !doneProcessing;
 	}
 
-	private Set<ITypeBinding> findParameterTypeAtOffset(Supplier<List<ASTNode>> argumentSupplier,
-			Function<IMethodBinding, List<ITypeBinding>> parameterSupplier, 
-			Supplier<IMethodBinding> bindingSupplier, ITypeBinding containerType) {
-		final List<ASTNode> arguments = argumentSupplier.get();
+	@Override
+	public void endVisit(MethodInvocation node) {
+		if (lastFoundNode != null) {
+			processNoteForType(lastFoundNode);
+			doneProcessing = true;
+			lastFoundNode = null;
+		}
+	}
+	
+	private void processNoteForType(ASTNode node) {
+		Set<ITypeBinding> typesAtOffset = findParameterTypeAtOffset(getDeclaringType(node));
+		typesAtOffset.stream().map(t -> {
+			try {
+				return project.findType(Signature.getTypeErasure(t.getQualifiedName()));
+			} catch (JavaModelException | IllegalArgumentException e) {
+				CorePlugin.getDefault().logError(e.getMessage(), e);
+				return null;
+			}
+		}).filter(Predicates.notNull()).forEach(t -> expectedTypes.add(t));
+	}
+
+	private Set<ITypeBinding> findParameterTypeAtOffset(ITypeBinding containerType) {
 		final IMethodBinding binding = bindingSupplier.get();
 
 		if (binding == null) {
 			return Collections.emptySet();
 		}
 
-		List<ITypeBinding> parameters = parameterSupplier.apply(binding);
+		final List<ASTNode> arguments = argumentSupplier.get();
+		final List<ITypeBinding> parameters = parameterSupplier.apply(binding);
+		final List<IMethodBinding> overloads = findFromOverloaded(binding, containerType);
+		
 		if (arguments.isEmpty()) {
 			if (!parameters.isEmpty()) {
-				return Sets.newHashSet(resolveType(parameters.get(0)));
+				if(overloads.size() > 1) {
+					return overloads.stream().filter(m -> m.getParameterTypes().length > 0)
+							.map(m -> resolveType(m.getParameterTypes()[0]))
+							.collect(Collectors.toSet());
+				} else {
+					return Sets.newHashSet(resolveType(parameters.get(0)));
+				}
 			}
 		} else {
 			int typeIndex = -1;
@@ -123,7 +150,6 @@ class CompletionASTVistor extends ASTVisitor {
 			if (binding != null) {
 				final int pIndex = typeIndex;
 				final ITypeBinding lType = lastType;
-				List<IMethodBinding> overloads = findFromOverloaded(binding, containerType);
 				if (overloads.size() > 1) {
 					return overloads.stream().filter(m -> m.getParameterTypes().length >= pIndex + 1 || m.isVarargs())
 							.map(m -> {
