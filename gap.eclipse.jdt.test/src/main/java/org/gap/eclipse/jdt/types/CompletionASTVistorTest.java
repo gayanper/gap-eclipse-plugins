@@ -110,6 +110,26 @@ public class CompletionASTVistorTest {
 
 		assertNull("Expected Type is not null", visitor.getExpectedType());
 	}
+
+	@Test
+	public void getExpectedTypes_OnNonExistingMethodExpression_ExpectNoErrors() throws Exception {
+		StringBuilder code = new StringBuilder();
+		code.append("package completion.test;\n");
+		code.append("import java.util.*;");
+		code.append("public class ASTFile {\n");
+		code.append("  public int foo() {\n");
+		code.append("  	boo(Collecti$);");
+		code.append("  }\n");
+		code.append("}\n");
+		
+
+		int index = getCompletionIndex(code);
+		ICompilationUnit cu = getCompilationUnit(pkg, code, "ASTFile.java");
+
+		CompletionASTVistor visitor = getVisitedVistor(cu, index);
+
+		assertNull("Expected Type is not null", visitor.getExpectedType());
+	}
 	
 	@Test
 	public void getExpectedTypes_OnParameter_WithMethodCompletionExpression_ExpectNoErrors() throws Exception {
