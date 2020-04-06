@@ -45,8 +45,7 @@ public class StaticMemberFinder {
 	public Stream<ICompletionProposal> find(final IType expectedType, JavaContentAssistInvocationContext context,
 			IProgressMonitor monitor, Duration timeout) {
 		return performSearch(expectedType, context, monitor, timeout)
-				.map(m -> toCompletionProposal(m, context, monitor))
-				.filter(Predicates.notNull());
+				.map(m -> toCompletionProposal(m, context, monitor)).filter(Predicates.notNull());
 	}
 
 	private ICompletionProposal toCompletionProposal(IMember member, JavaContentAssistInvocationContext context,
@@ -148,22 +147,36 @@ public class StaticMemberFinder {
 			return false;
 		}
 	}
-	
+
+	private boolean matchReturnTypeIfMethod(IMember member, String expectedTypeSig) {
+		try {
+			if (member instanceof IMethod) {
+				return expectedTypeSig.equals((Signature.getTypeErasure(((IMethod) member).getReturnType())));
+			}
+		} catch (JavaModelException e) {
+			CorePlugin.getDefault().logError(e.getMessage(), e);
+			return false;
+		}
+		return true;
+	}
+
 	@SuppressWarnings("deprecation")
 	private Stream<IMember> performSearch(IType expectedType, JavaContentAssistInvocationContext context,
 			IProgressMonitor monitor, Duration timeout) {
 		SearchEngine engine = new SearchEngine();
-		SearchPattern pattern = SearchPattern.createPattern(fixInnerType(expectedType.getFullyQualifiedName()),
-				IJavaSearchConstants.TYPE, IJavaSearchConstants.REFERENCES, SearchPattern.R_EQUIVALENT_MATCH | SearchPattern.R_CASE_SENSITIVE);
-		if(context.getCoreContext().getToken().length > 0) {
-			SearchPattern tokenPattern = SearchPattern.createPattern(new String(context.getCoreContext().getToken()).concat("*"), 
-					IJavaSearchConstants.METHOD, IJavaSearchConstants.DECLARATIONS, SearchPattern.R_PATTERN_MATCH);
+		final String erasureTypeSig = Signature.getTypeErasure(Signature.createTypeSignature(expectedType.getFullyQualifiedName(), true));
+		SearchPattern pattern = SearchPattern.createPattern(expectedType, IJavaSearchConstants.REFERENCES, SearchPattern.R_CASE_SENSITIVE);
+		
+		if (context.getCoreContext().getToken().length > 0) {
+			SearchPattern tokenPattern = SearchPattern.createPattern(
+					new String(context.getCoreContext().getToken()).concat("*"), IJavaSearchConstants.METHOD,
+					IJavaSearchConstants.DECLARATIONS, SearchPattern.R_PATTERN_MATCH);
 			pattern = SearchPattern.createAndPattern(pattern, tokenPattern);
 		}
 		final SearchPattern finalPattern = pattern;
-		
+
 		final Set<IMember> resultAccumerlator = Collections.synchronizedSet(new HashSet<>());
-		final ExecutorService executor= Executors.newSingleThreadExecutor();
+		final ExecutorService executor = Executors.newSingleThreadExecutor();
 		Future<?> task = executor.submit(() -> {
 			try {
 				engine.search(finalPattern, new SearchParticipant[] { SearchEngine.getDefaultSearchParticipant() },
@@ -173,9 +186,10 @@ public class StaticMemberFinder {
 						new SearchRequestor() {
 							@Override
 							public void acceptSearchMatch(SearchMatch match) throws CoreException {
+								System.out.println(match.getElement().toString());
 								if (match.getElement() instanceof IMember) {
 									final IMember member = (IMember) match.getElement();
-									if(onlyPublicStatic(member)) {
+									if(onlyPublicStatic(member) && matchReturnTypeIfMethod(member, erasureTypeSig)) {
 										resultAccumerlator.add((IMember) match.getElement());
 									}
 								}
@@ -199,14 +213,10 @@ public class StaticMemberFinder {
 		} catch (Exception e) {
 			CorePlugin.getDefault().logError(e.getMessage(), e);
 		} finally {
-			executor.shutdownNow();
+			executor.shutdown();
 		}
-		
+
 		// copy and create a stream.
 		return new ArrayList<>(resultAccumerlator).stream();
-	}
-
-	private String fixInnerType(String fqn) {
-		return fqn.replace('$', '.');
 	}
 }
