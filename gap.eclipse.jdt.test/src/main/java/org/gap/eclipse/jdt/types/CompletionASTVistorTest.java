@@ -51,13 +51,13 @@ public class CompletionASTVistorTest {
 	public void getExpectedTypes_OnParameter_WithMethodCompletionLambdaExpression_ExpectNoErrors() throws Exception {
 		StringBuilder code = new StringBuilder();
 		code.append("package completion.test;\n");
-		code.append("import java.util.concurrent.CompletableFuture;");
+		code.append("import java.util.concurrent.CompletableFuture;\n");
 		code.append("public class ASTFile {\n");
 		code.append("  public String test(String value, int x, java.util.List<String> list) {\n");
-		code.append("  	return null;");
+		code.append("  	return null;\n");
 		code.append("  }\n");
 		code.append("  public CompletableFuture<String> foo() {\n");
-		code.append("  	return CompletableFuture.supplyAsync(() -> test(\"test\", 1, java.util.Collections.empty$));");
+		code.append("  	return CompletableFuture.supplyAsync(() -> test(\"test\", 1, java.util.Collections.empty$));\n");
 		code.append("  }\n");
 		code.append("}\n");
 
@@ -74,10 +74,10 @@ public class CompletionASTVistorTest {
 	public void getExpectedTypes_MethodCompletionInMethodExpression1_ExpectNoErrors() throws Exception {
 		StringBuilder code = new StringBuilder();
 		code.append("package completion.test;\n");
-		code.append("import java.util.*;");
+		code.append("import java.util.*;\n");
 		code.append("public class ASTFile {\n");
 		code.append("  public int foo() {\n");
-		code.append("  	Collections.synchronizedList(Collections.emptyList()).$");
+		code.append("  	Collections.synchronizedList(Collections.emptyList()).$\n");
 		code.append("  }\n");
 		code.append("}\n");
 
@@ -93,10 +93,10 @@ public class CompletionASTVistorTest {
 	public void getExpectedTypes_MethodCompletionInMethodExpression2_ExpectNoErrors() throws Exception {
 		StringBuilder code = new StringBuilder();
 		code.append("package completion.test;\n");
-		code.append("import java.util.*;");
+		code.append("import java.util.*;\n");
 		code.append("public class ASTFile {\n");
 		code.append("  public int foo() {\n");
-		code.append("  	Collections.synchronizedList(Collections.emptyList().$);");
+		code.append("  	Collections.synchronizedList(Collections.emptyList().$);\n");
 		code.append("  }\n");
 		code.append("}\n");
 
@@ -114,10 +114,10 @@ public class CompletionASTVistorTest {
 	public void getExpectedTypes_OnNonExistingMethodExpression_ExpectNoErrors() throws Exception {
 		StringBuilder code = new StringBuilder();
 		code.append("package completion.test;\n");
-		code.append("import java.util.*;");
+		code.append("import java.util.*;\n");
 		code.append("public class ASTFile {\n");
 		code.append("  public int foo() {\n");
-		code.append("  	boo(Collecti$);");
+		code.append("  	boo(Collecti$);\n");
 		code.append("  }\n");
 		code.append("}\n");
 
@@ -135,13 +135,13 @@ public class CompletionASTVistorTest {
 		code.append("package completion.test;\n");
 		code.append("public class ASTFile {\n");
 		code.append("  public String test(String value, int x, java.util.List<String> list) {\n");
-		code.append("  	return null;");
+		code.append("  	return null;\n");
 		code.append("  }\n");
 		code.append("  public String method(String value) {\n");
-		code.append("  	return null;");
+		code.append("  	return null;\n");
 		code.append("  }\n");
 		code.append("  public String foo() {\n");
-		code.append("  	return method(test(\" \", 10, $));");
+		code.append("  	return method(test(\" \", 10, $));\n");
 		code.append("  }\n");
 		code.append("}\n");
 
@@ -160,7 +160,7 @@ public class CompletionASTVistorTest {
 		code.append("package completion.test;\n");
 		code.append("public class ASTFile {\n");
 		code.append("  public String test(String value, int x, java.util.List<String> list) {\n");
-		code.append("  	return java.util.Collections.emptyList().$;");
+		code.append("  	return java.util.Collections.emptyList().$;\n");
 		code.append("  }\n");
 		code.append("}\n");
 
@@ -178,13 +178,13 @@ public class CompletionASTVistorTest {
 		code.append("package completion.test;\n");
 		code.append("public class ASTFile {\n");
 		code.append("  public String test(String value, int x, java.util.List<String> list) {\n");
-		code.append("  	return null");
+		code.append("  	return null;\n");
 		code.append("  }\n");
 		code.append("  public String test(java.util.List<String> list) {\n");
-		code.append("  	return null");
+		code.append("  	return null;\n");
 		code.append("  }\n");
 		code.append("  public String foo() {\n");
-		code.append("  	return test($);");
+		code.append("  	return test($);\n");
 		code.append("  }\n");
 		code.append("}\n");
 
@@ -206,13 +206,13 @@ public class CompletionASTVistorTest {
 		code.append("package completion.test;\n");
 		code.append("public class ASTFile {\n");
 		code.append("  public String test(String value, int x, java.util.List<String> list) {\n");
-		code.append("  	return null");
+		code.append("  	return null;\n");
 		code.append("  }\n");
 		code.append("  public String test(java.util.List<String> list) {\n");
-		code.append("  	return null");
+		code.append("  	return null;\n");
 		code.append("  }\n");
 		code.append("  public String foo() {\n");
-		code.append("  	return test(event$);");
+		code.append("  	return test(event$);\n");
 		code.append("  }\n");
 		code.append("}\n");
 
@@ -234,13 +234,13 @@ public class CompletionASTVistorTest {
 		code.append("package completion.test;\n");
 		code.append("public class ASTFile {\n");
 		code.append("  public String test(String value, int x, java.util.Set<String> list) {\n");
-		code.append("  	return null");
+		code.append("  	return null;\n");
 		code.append("  }\n");
 		code.append("  public String test(java.util.List<String> list) {\n");
-		code.append("  	return null");
+		code.append("  	return null;\n");
 		code.append("  }\n");
 		code.append("  public String foo() {\n");
-		code.append("  	return test(\" \", 1, $);");
+		code.append("  	return test(\" \", 1, $);\n");
 		code.append("  }\n");
 		code.append("}\n");
 
@@ -256,14 +256,14 @@ public class CompletionASTVistorTest {
 	}
 
 	@Test
-	public void getExpectedTypes_OnParameter_WithChainedMethodExpression_ExpectNoErrors() throws Exception {
+	public void getExpectedTypes_OnParameter_WithChainedMethodExpression1_ExpectNoErrors() throws Exception {
 		StringBuilder code = new StringBuilder();
 		code.append("package completion.test;\n");
-		code.append("import java.lang.StringBuilder;");
+		code.append("import java.lang.StringBuilder;\n");
 		code.append("public class ASTFile {\n");
 		code.append("  public String foo() {\n");
-		code.append("	StringBuilder builder = new StringBuilder();");
-		code.append("  	builder.append(\"0\").append($)");
+		code.append("	StringBuilder builder = new StringBuilder();\n");
+		code.append("  	builder.append(\"0\").append($)\n");
 		code.append("  }\n");
 		code.append("}\n");
 
@@ -274,6 +274,26 @@ public class CompletionASTVistorTest {
 
 		assertNotNull("Expected Type is null", visitor.getExpectedType());
 		assertTrue("No multiple expected types", visitor.getExpectedTypes().size() > 1);
+	}
+
+	@Test
+	public void getExpectedTypes_OnParameter_WithChainedMethodExpression2_ExpectNoErrors() throws Exception {
+		StringBuilder code = new StringBuilder();
+		code.append("package completion.test;\n");
+		code.append("import java.lang.StringBuilder;\n");
+		code.append("public class ASTFile {\n");
+		code.append("  public String foo() {\n");
+		code.append("	StringBuilder builder = new StringBuilder();\n");
+		code.append("  	builder.appe$nd(\"0\").append(\"a\")");
+		code.append("  }\n");
+		code.append("}\n");
+
+		int index = getCompletionIndex(code);
+		ICompilationUnit cu = getCompilationUnit(pkg, code, "ASTFile.java");
+
+		CompletionASTVistor visitor = getVisitedVistor(cu, index);
+
+		assertNull("Expected Type is not null", visitor.getExpectedType());
 	}
 
 	private CompletionASTVistor getVisitedVistor(ICompilationUnit cu, int index) throws Exception {

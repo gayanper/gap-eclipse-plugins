@@ -146,7 +146,7 @@ class CompletionASTVistor extends ASTVisitor {
 				lastType = resolveTypeBinding(astNode);
 			}
 
-			if (binding != null) {
+			if (binding != null && typeIndex > -1) {
 				final int pIndex = typeIndex;
 				final ITypeBinding lType = lastType;
 				if (overloads.size() > 1) {
