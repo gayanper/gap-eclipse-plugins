@@ -58,22 +58,17 @@ class CompletionASTVistor extends ASTVisitor {
 
 	@Override
 	public boolean visit(ClassInstanceCreation node) {
-		argumentSupplier = Suppliers.memoize(node::arguments);
-		parameterSupplier = method -> Arrays.asList(method.getParameterTypes());
-		bindingSupplier = Suppliers.memoize(node::resolveConstructorBinding);
-		
-		return visitNode(node);
+		return visitNode(node, Suppliers.memoize(node::arguments), method -> Arrays.asList(method.getParameterTypes()),
+				Suppliers.memoize(node::resolveConstructorBinding));
 	}
 
 	@Override
 	public boolean visit(MethodInvocation node) {
-		argumentSupplier = Suppliers.memoize(node::arguments);
-		parameterSupplier = method -> Arrays.asList(method.getParameterTypes());
-		bindingSupplier = Suppliers.memoize(node::resolveMethodBinding);
-		return visitNode(node);
+		return visitNode(node, Suppliers.memoize(node::arguments), method -> Arrays.asList(method.getParameterTypes()),
+				Suppliers.memoize(node::resolveMethodBinding));
 	}
 
-	private boolean visitNode(Expression node) {
+	private boolean visitNode(Expression node, Supplier<List<ASTNode>> argumentSupplier, Function<IMethodBinding, List<ITypeBinding>> parameterSupplier, Supplier<IMethodBinding> bindingSupplier) {
 		final CodeRange current = new CodeRange(node.getStartPosition(), node.getStartPosition() + node.getLength(),
 				node);
 
@@ -85,6 +80,10 @@ class CompletionASTVistor extends ASTVisitor {
 		if (current.inRange(offset) && (lastVisited == null || lastVisited.inRange(current))) {
 			lastVisited = current;
 			lastFoundNode = node;
+			this.argumentSupplier = argumentSupplier;
+			this.parameterSupplier = parameterSupplier;
+			this.bindingSupplier = bindingSupplier;
+
 			return true;
 		}
 		return !doneProcessing;
@@ -92,7 +91,7 @@ class CompletionASTVistor extends ASTVisitor {
 
 	@Override
 	public void endVisit(MethodInvocation node) {
-		if (lastFoundNode != null) {
+		if (lastFoundNode != null && lastFoundNode.equals(node)) {
 			processNoteForType(lastFoundNode);
 			doneProcessing = true;
 			lastFoundNode = null;

@@ -67,8 +67,7 @@ public class CompletionASTVistorTest {
 		CompletionASTVistor visitor = getVisitedVistor(cu, index);
 
 		assertNotNull("Expected Type is null", visitor.getExpectedType());
-		assertTrue("Expected Type is List", 
-				"java.util.List".equals(visitor.getExpectedType().getFullyQualifiedName()));
+		assertTrue("Expected Type is List", "java.util.List".equals(visitor.getExpectedType().getFullyQualifiedName()));
 	}
 
 	@Test
@@ -81,7 +80,6 @@ public class CompletionASTVistorTest {
 		code.append("  	Collections.synchronizedList(Collections.emptyList()).$");
 		code.append("  }\n");
 		code.append("}\n");
-		
 
 		int index = getCompletionIndex(code);
 		ICompilationUnit cu = getCompilationUnit(pkg, code, "ASTFile.java");
@@ -101,14 +99,15 @@ public class CompletionASTVistorTest {
 		code.append("  	Collections.synchronizedList(Collections.emptyList().$);");
 		code.append("  }\n");
 		code.append("}\n");
-		
 
 		int index = getCompletionIndex(code);
 		ICompilationUnit cu = getCompilationUnit(pkg, code, "ASTFile.java");
 
 		CompletionASTVistor visitor = getVisitedVistor(cu, index);
 
-		assertNull("Expected Type is not null", visitor.getExpectedType());
+		assertNotNull("Expected Type is null", visitor.getExpectedType());
+		assertTrue("Expected Type is not List",
+				"java.util.List".equals(visitor.getExpectedType().getFullyQualifiedName()));
 	}
 
 	@Test
@@ -121,7 +120,6 @@ public class CompletionASTVistorTest {
 		code.append("  	boo(Collecti$);");
 		code.append("  }\n");
 		code.append("}\n");
-		
 
 		int index = getCompletionIndex(code);
 		ICompilationUnit cu = getCompilationUnit(pkg, code, "ASTFile.java");
@@ -130,12 +128,11 @@ public class CompletionASTVistorTest {
 
 		assertNull("Expected Type is not null", visitor.getExpectedType());
 	}
-	
+
 	@Test
 	public void getExpectedTypes_OnParameter_WithMethodCompletionExpression_ExpectNoErrors() throws Exception {
 		StringBuilder code = new StringBuilder();
 		code.append("package completion.test;\n");
-		code.append("import java.util.concurrent.CompletableFuture;");
 		code.append("public class ASTFile {\n");
 		code.append("  public String test(String value, int x, java.util.List<String> list) {\n");
 		code.append("  	return null;");
@@ -154,15 +151,13 @@ public class CompletionASTVistorTest {
 		CompletionASTVistor visitor = getVisitedVistor(cu, index);
 
 		assertNotNull("Expected Type is null", visitor.getExpectedType());
-		assertTrue("Expected Type is List", 
-				"java.util.List".equals(visitor.getExpectedType().getFullyQualifiedName()));
+		assertTrue("Expected Type is List", "java.util.List".equals(visitor.getExpectedType().getFullyQualifiedName()));
 	}
 
 	@Test
 	public void getExpectedTypes_Expressing_WithInMethodCompletionExpression_ExpectNoErrors() throws Exception {
 		StringBuilder code = new StringBuilder();
 		code.append("package completion.test;\n");
-		code.append("import java.util.concurrent.CompletableFuture;");
 		code.append("public class ASTFile {\n");
 		code.append("  public String test(String value, int x, java.util.List<String> list) {\n");
 		code.append("  	return java.util.Collections.emptyList().$;");
@@ -181,7 +176,6 @@ public class CompletionASTVistorTest {
 	public void getExpectedTypes_OnOverloads_OnFirstParameter1_ReturnExpectedTypes() throws Exception {
 		StringBuilder code = new StringBuilder();
 		code.append("package completion.test;\n");
-		code.append("import java.util.concurrent.CompletableFuture;");
 		code.append("public class ASTFile {\n");
 		code.append("  public String test(String value, int x, java.util.List<String> list) {\n");
 		code.append("  	return null");
@@ -201,17 +195,15 @@ public class CompletionASTVistorTest {
 
 		assertNotNull("Expected Type is null", visitor.getExpectedType());
 		assertTrue("Expected two types", visitor.getExpectedTypes().size() == 2);
-		assertTrue("Expected String and List as types", 
-				visitor.getExpectedTypes().stream()
-					.allMatch(t -> t.getFullyQualifiedName().equals("java.lang.String") ||
-							t.getFullyQualifiedName().equals("java.util.List")));
+		assertTrue("Expected String and List as types",
+				visitor.getExpectedTypes().stream().allMatch(t -> t.getFullyQualifiedName().equals("java.lang.String")
+						|| t.getFullyQualifiedName().equals("java.util.List")));
 	}
 
 	@Test
 	public void getExpectedTypes_OnOverloads_OnFirstParameter2_ReturnExpectedTypes() throws Exception {
 		StringBuilder code = new StringBuilder();
 		code.append("package completion.test;\n");
-		code.append("import java.util.concurrent.CompletableFuture;");
 		code.append("public class ASTFile {\n");
 		code.append("  public String test(String value, int x, java.util.List<String> list) {\n");
 		code.append("  	return null");
@@ -231,17 +223,15 @@ public class CompletionASTVistorTest {
 
 		assertNotNull("Expected Type is null", visitor.getExpectedType());
 		assertTrue("Expected two types", visitor.getExpectedTypes().size() == 2);
-		assertTrue("Expected String and List as types", 
-				visitor.getExpectedTypes().stream()
-					.allMatch(t -> t.getFullyQualifiedName().equals("java.lang.String") ||
-							t.getFullyQualifiedName().equals("java.util.List")));
+		assertTrue("Expected String and List as types",
+				visitor.getExpectedTypes().stream().allMatch(t -> t.getFullyQualifiedName().equals("java.lang.String")
+						|| t.getFullyQualifiedName().equals("java.util.List")));
 	}
 
 	@Test
 	public void getExpectedTypes_OnOverloads_OnNthParameter_ReturnExpectedTypes() throws Exception {
 		StringBuilder code = new StringBuilder();
 		code.append("package completion.test;\n");
-		code.append("import java.util.concurrent.CompletableFuture;");
 		code.append("public class ASTFile {\n");
 		code.append("  public String test(String value, int x, java.util.Set<String> list) {\n");
 		code.append("  	return null");
@@ -261,8 +251,29 @@ public class CompletionASTVistorTest {
 
 		assertNotNull("Expected Type is null", visitor.getExpectedType());
 		assertTrue("Expected two types", visitor.getExpectedTypes().size() == 1);
-		assertTrue("Expected Set as type", 
+		assertTrue("Expected Set as type",
 				"java.util.Set".equals(visitor.getExpectedTypes().iterator().next().getFullyQualifiedName()));
+	}
+
+	@Test
+	public void getExpectedTypes_OnParameter_WithChainedMethodExpression_ExpectNoErrors() throws Exception {
+		StringBuilder code = new StringBuilder();
+		code.append("package completion.test;\n");
+		code.append("import java.lang.StringBuilder;");
+		code.append("public class ASTFile {\n");
+		code.append("  public String foo() {\n");
+		code.append("	StringBuilder builder = new StringBuilder();");
+		code.append("  	builder.append(\"0\").append($)");
+		code.append("  }\n");
+		code.append("}\n");
+
+		int index = getCompletionIndex(code);
+		ICompilationUnit cu = getCompilationUnit(pkg, code, "ASTFile.java");
+
+		CompletionASTVistor visitor = getVisitedVistor(cu, index);
+
+		assertNotNull("Expected Type is null", visitor.getExpectedType());
+		assertTrue("No multiple expected types", visitor.getExpectedTypes().size() > 1);
 	}
 
 	private CompletionASTVistor getVisitedVistor(ICompilationUnit cu, int index) throws Exception {
