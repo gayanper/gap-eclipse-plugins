@@ -153,9 +153,11 @@ class CompletionASTVistor extends ASTVisitor {
 				if (overloads.size() > 1) {
 					return overloads.stream().filter(m -> m.getParameterTypes().length >= pIndex + 1 || m.isVarargs())
 							.map(m -> {
+								// on statement line test(field$) we end up in this block even for the first parameter.
+								// so we should handle is gracefully here.
 								if (m.isVarargs()) {
 									return resolveType(m.getParameterTypes()[m.getParameterTypes().length - 1]);
-								} else if (isNonGenericEqual(m.getParameterTypes()[pIndex - 1], lType)) {
+								} else if (pIndex == 0 ||  isNonGenericEqual(m.getParameterTypes()[pIndex - 1], lType)) {
 									return resolveType(m.getParameterTypes()[pIndex]);
 								}
 								return null;

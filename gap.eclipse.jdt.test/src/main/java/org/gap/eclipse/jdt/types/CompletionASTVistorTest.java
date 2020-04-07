@@ -178,7 +178,7 @@ public class CompletionASTVistorTest {
 	}
 
 	@Test
-	public void getExpectedTypes_OnOverloads_OnFirstParameter_ReturnExpectedTypes() throws Exception {
+	public void getExpectedTypes_OnOverloads_OnFirstParameter1_ReturnExpectedTypes() throws Exception {
 		StringBuilder code = new StringBuilder();
 		code.append("package completion.test;\n");
 		code.append("import java.util.concurrent.CompletableFuture;");
@@ -191,6 +191,36 @@ public class CompletionASTVistorTest {
 		code.append("  }\n");
 		code.append("  public String foo() {\n");
 		code.append("  	return test($);");
+		code.append("  }\n");
+		code.append("}\n");
+
+		int index = getCompletionIndex(code);
+		ICompilationUnit cu = getCompilationUnit(pkg, code, "ASTFile.java");
+
+		CompletionASTVistor visitor = getVisitedVistor(cu, index);
+
+		assertNotNull("Expected Type is null", visitor.getExpectedType());
+		assertTrue("Expected two types", visitor.getExpectedTypes().size() == 2);
+		assertTrue("Expected String and List as types", 
+				visitor.getExpectedTypes().stream()
+					.allMatch(t -> t.getFullyQualifiedName().equals("java.lang.String") ||
+							t.getFullyQualifiedName().equals("java.util.List")));
+	}
+
+	@Test
+	public void getExpectedTypes_OnOverloads_OnFirstParameter2_ReturnExpectedTypes() throws Exception {
+		StringBuilder code = new StringBuilder();
+		code.append("package completion.test;\n");
+		code.append("import java.util.concurrent.CompletableFuture;");
+		code.append("public class ASTFile {\n");
+		code.append("  public String test(String value, int x, java.util.List<String> list) {\n");
+		code.append("  	return null");
+		code.append("  }\n");
+		code.append("  public String test(java.util.List<String> list) {\n");
+		code.append("  	return null");
+		code.append("  }\n");
+		code.append("  public String foo() {\n");
+		code.append("  	return test(event$);");
 		code.append("  }\n");
 		code.append("}\n");
 
