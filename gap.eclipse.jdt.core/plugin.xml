@@ -7,7 +7,7 @@
          point="org.eclipse.jdt.ui.javaCompletionProposalComputer">
 		<javaCompletionProposalComputer
         activate="false"
-        categoryId="gap.eclipse.jdt.proposalCategory.smartStatic"
+        categoryId="gap.eclipse.jdt.core.smartStatic"
         class="org.gap.eclipse.jdt.types.SmartStaticProposalComputer"
         requiresUIThread="false">
   </javaCompletionProposalComputer>
@@ -21,7 +21,7 @@
             sequence="M2+M3+M1+SPACE">
          <parameter
                id="org.eclipse.jdt.ui.specific_content_assist.category_id"
-               value="gap.eclipse.jdt.proposalCategory.smartStatic">
+               value="gap.eclipse.jdt.core.smartStatic">
          </parameter>
       </key>
       <key
@@ -93,7 +93,7 @@
          point="org.eclipse.jdt.ui.javaCompletionProposalComputer">
 		<javaCompletionProposalComputer
         activate="false"
-        categoryId="gap.eclipse.jdt.proposalCategory.smartSubtype"
+        categoryId="gap.eclipse.jdt.core.smartSubType"
         class="org.gap.eclipse.jdt.types.SmartSubTypeProposalComputer"
         requiresUIThread="false">
 		 </javaCompletionProposalComputer>
@@ -104,7 +104,7 @@
          point="org.eclipse.jdt.ui.javaCompletionProposalComputer">
 		<javaCompletionProposalComputer
         activate="false"
-        categoryId="gap.eclipse.jdt.proposalCategory.smartEnum"
+        categoryId="gap.eclipse.jdt.core.smartEnum"
         class="org.gap.eclipse.jdt.types.SmartEnumLiteralProposalComputer"
         requiresUIThread="false">
 		 </javaCompletionProposalComputer>
@@ -140,5 +140,29 @@
                menubarPath="additions">
          </action>
       </viewerContribution>
+   </extension>
+   <extension
+         id="smartStatic"
+         name="Smart Static Completion"
+         point="org.eclipse.jdt.ui.javaCompletionProposalComputer">
+      <proposalCategory
+            icon="icons/view16/sessionprocessor_types.png">
+      </proposalCategory>
+   </extension>
+   <extension
+         id="smartEnum"
+         name="Smart Enum Completion"
+         point="org.eclipse.jdt.ui.javaCompletionProposalComputer">
+      <proposalCategory
+            icon="icons/view16/sessionprocessor_types.png">
+      </proposalCategory>
+   </extension>
+   <extension
+         id="smartSubType"
+         name="Smart SubType Completion"
+         point="org.eclipse.jdt.ui.javaCompletionProposalComputer">
+      <proposalCategory
+            icon="icons/view16/sessionprocessor_types.png">
+      </proposalCategory>
    </extension>
 </plugin>
