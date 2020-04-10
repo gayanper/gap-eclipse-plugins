@@ -42,6 +42,8 @@ import com.google.common.base.Predicates;
 @SuppressWarnings("restriction")
 public class StaticMemberFinder {
 
+	private CachedSearchParticipant cachedSearchParticipant = new CachedSearchParticipant(SearchEngine.getDefaultSearchParticipant());
+
 	public Stream<ICompletionProposal> find(final IType expectedType, JavaContentAssistInvocationContext context,
 			IProgressMonitor monitor, Duration timeout) {
 		return performSearch(expectedType, context, monitor, timeout)
@@ -167,11 +169,12 @@ public class StaticMemberFinder {
 	@SuppressWarnings("deprecation")
 	private Stream<IMember> performSearch(IType expectedType, JavaContentAssistInvocationContext context,
 			IProgressMonitor monitor, Duration timeout) {
-		SearchEngine engine = new SearchEngine();
+		final SearchJobTracker searchJobTracker = new SearchJobTracker();
+		final SearchEngine engine = new SearchEngine();
 		final String erasureTypeSig = Signature.createTypeSignature(expectedType.getFullyQualifiedName(), true);
 		SearchPattern pattern = SearchPattern.createPattern(expectedType, IJavaSearchConstants.RETURN_TYPE_REFERENCE,
 				SearchPattern.R_CASE_SENSITIVE | SearchPattern.R_ERASURE_MATCH);
-		
+
 		if (context.getCoreContext().getToken().length > 0) {
 			SearchPattern tokenPattern = SearchPattern.createPattern(
 					new String(context.getCoreContext().getToken()).concat("*"), IJavaSearchConstants.METHOD,
@@ -179,24 +182,26 @@ public class StaticMemberFinder {
 			pattern = SearchPattern.createAndPattern(pattern, tokenPattern);
 		} else {
 			// workaround for bug561268 until it is fixed
-			SearchPattern tokenPattern1 = SearchPattern.createPattern(
-					"*", IJavaSearchConstants.METHOD,
+			SearchPattern tokenPattern = SearchPattern.createPattern("*", IJavaSearchConstants.METHOD,
 					IJavaSearchConstants.DECLARATIONS, SearchPattern.R_PATTERN_MATCH);
-			pattern = SearchPattern.createAndPattern(pattern, tokenPattern1);
+			pattern = SearchPattern.createAndPattern(pattern, tokenPattern);
 		}
 		final SearchPattern finalPattern = pattern;
 
 		final Set<IMember> resultAccumerlator = Collections.synchronizedSet(new HashSet<>());
 		final ExecutorService executor = Executors.newSingleThreadExecutor();
+		searchJobTracker.startTracking();
+		cachedSearchParticipant.pushCurrentSearch(expectedType, new String(context.getCoreContext().getToken()));
 		Future<?> task = executor.submit(() -> {
 			try {
-				engine.search(finalPattern, new SearchParticipant[] { SearchEngine.getDefaultSearchParticipant() },
+				engine.search(finalPattern, new SearchParticipant[] { cachedSearchParticipant },
 						SearchEngine.createJavaSearchScope(new IJavaElement[] { context.getProject() },
 								JavaSearchScope.REFERENCED_PROJECTS | JavaSearchScope.APPLICATION_LIBRARIES
 										| JavaSearchScope.SYSTEM_LIBRARIES | JavaSearchScope.SOURCES),
 						new SearchRequestor() {
 							@Override
 							public void acceptSearchMatch(SearchMatch match) throws CoreException {
+								cachedSearchParticipant.cacheMatch(match);
 								if (match.getElement() instanceof IMember) {
 									final IMember member = (IMember) match.getElement();
 									if (onlyPublicStatic(member) && matchReturnTypeIfMethod(member, erasureTypeSig)) {
@@ -207,6 +212,7 @@ public class StaticMemberFinder {
 
 							@Override
 							public void endReporting() {
+								searchJobTracker.finishTracking();
 							}
 
 						}, monitor);
