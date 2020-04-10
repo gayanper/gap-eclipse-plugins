@@ -165,4 +165,10 @@
             icon="icons/view16/sessionprocessor_types.png">
       </proposalCategory>
    </extension>
+   <extension
+         point="org.eclipse.ui.startup">
+      <startup
+            class="org.gap.eclipse.jdt.types.WarmUpSearchIndex">
+      </startup>
+   </extension>
 </plugin>

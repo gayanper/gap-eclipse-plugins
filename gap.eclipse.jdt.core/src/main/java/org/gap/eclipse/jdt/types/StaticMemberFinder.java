@@ -151,7 +151,11 @@ public class StaticMemberFinder {
 	private boolean matchReturnTypeIfMethod(IMember member, String expectedTypeSig) {
 		try {
 			if (member instanceof IMethod) {
-				return expectedTypeSig.equals((Signature.getTypeErasure(((IMethod) member).getReturnType())));
+				String type = ((IMethod) member).getReturnType();
+				if (Signature.getTypeSignatureKind(type) == Signature.getTypeSignatureKind(expectedTypeSig)) {
+					return Signature.getTypeErasure(expectedTypeSig).equals(Signature.getTypeErasure(type));
+				}
+				return false;
 			}
 		} catch (JavaModelException e) {
 			CorePlugin.getDefault().logError(e.getMessage(), e);
@@ -164,14 +168,21 @@ public class StaticMemberFinder {
 	private Stream<IMember> performSearch(IType expectedType, JavaContentAssistInvocationContext context,
 			IProgressMonitor monitor, Duration timeout) {
 		SearchEngine engine = new SearchEngine();
-		final String erasureTypeSig = Signature.getTypeErasure(Signature.createTypeSignature(expectedType.getFullyQualifiedName(), true));
-		SearchPattern pattern = SearchPattern.createPattern(expectedType, IJavaSearchConstants.REFERENCES, SearchPattern.R_CASE_SENSITIVE);
+		final String erasureTypeSig = Signature.createTypeSignature(expectedType.getFullyQualifiedName(), true);
+		SearchPattern pattern = SearchPattern.createPattern(expectedType, IJavaSearchConstants.RETURN_TYPE_REFERENCE,
+				SearchPattern.R_CASE_SENSITIVE | SearchPattern.R_ERASURE_MATCH);
 		
 		if (context.getCoreContext().getToken().length > 0) {
 			SearchPattern tokenPattern = SearchPattern.createPattern(
 					new String(context.getCoreContext().getToken()).concat("*"), IJavaSearchConstants.METHOD,
 					IJavaSearchConstants.DECLARATIONS, SearchPattern.R_PATTERN_MATCH);
 			pattern = SearchPattern.createAndPattern(pattern, tokenPattern);
+		} else {
+			// workaround for bug561268 until it is fixed
+			SearchPattern tokenPattern1 = SearchPattern.createPattern(
+					"*", IJavaSearchConstants.METHOD,
+					IJavaSearchConstants.DECLARATIONS, SearchPattern.R_PATTERN_MATCH);
+			pattern = SearchPattern.createAndPattern(pattern, tokenPattern1);
 		}
 		final SearchPattern finalPattern = pattern;
 
@@ -186,10 +197,9 @@ public class StaticMemberFinder {
 						new SearchRequestor() {
 							@Override
 							public void acceptSearchMatch(SearchMatch match) throws CoreException {
-								System.out.println(match.getElement().toString());
 								if (match.getElement() instanceof IMember) {
 									final IMember member = (IMember) match.getElement();
-									if(onlyPublicStatic(member) && matchReturnTypeIfMethod(member, erasureTypeSig)) {
+									if (onlyPublicStatic(member) && matchReturnTypeIfMethod(member, erasureTypeSig)) {
 										resultAccumerlator.add((IMember) match.getElement());
 									}
 								}
@@ -204,8 +214,7 @@ public class StaticMemberFinder {
 				CorePlugin.getDefault().logError(e.getMessage(), e);
 			}
 		});
-		
-		
+
 		try {
 			task.get(timeout.getSeconds(), TimeUnit.SECONDS);
 		} catch (TimeoutException e) {
@@ -217,6 +226,6 @@ public class StaticMemberFinder {
 		}
 
 		// copy and create a stream.
-		return new ArrayList<>(resultAccumerlator).stream();
+		return new ArrayList<>(resultAccumerlator).stream().limit(100).parallel();
 	}
 }
