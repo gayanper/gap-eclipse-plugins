@@ -42,7 +42,8 @@ import com.google.common.base.Predicates;
 @SuppressWarnings("restriction")
 public class StaticMemberFinder {
 
-	private CachedSearchParticipant cachedSearchParticipant = new CachedSearchParticipant(SearchEngine.getDefaultSearchParticipant());
+	private CachedSearchParticipant cachedSearchParticipant = new CachedSearchParticipant(
+			new FilteredSearchParticipant(SearchEngine.getDefaultSearchParticipant()));
 
 	public Stream<ICompletionProposal> find(final IType expectedType, JavaContentAssistInvocationContext context,
 			IProgressMonitor monitor, Duration timeout) {
