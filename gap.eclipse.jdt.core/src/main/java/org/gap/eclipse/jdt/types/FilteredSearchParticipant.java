@@ -42,9 +42,10 @@ public class FilteredSearchParticipant extends SearchParticipant {
 
 	private Predicate<SearchDocument> searchInDocuments() {
 		return Predicates.<SearchDocument>not((SearchDocument d) -> {
-			return d.getPath().contains("|sun/") ||
+			return d.getPath().contains("|sun") ||
 					d.getPath().contains("|com/sun") ||
-					d.getPath().contains("|com/oracle");
+					d.getPath().contains("|com/oracle") ||
+					d.getPath().contains("|jdk");
 		});
 	}
 	

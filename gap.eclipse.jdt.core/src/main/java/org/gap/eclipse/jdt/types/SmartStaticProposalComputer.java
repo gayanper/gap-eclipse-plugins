@@ -7,6 +7,8 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.jdt.core.IType;
+import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.Signature;
 import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTNode;
@@ -41,15 +43,21 @@ public class SmartStaticProposalComputer extends AbstractSmartProposalComputer i
 		
 		if (invocationContext instanceof JavaContentAssistInvocationContext) {
 			JavaContentAssistInvocationContext context = (JavaContentAssistInvocationContext) invocationContext;
-			if (context.getCoreContext().getExpectedTypesSignatures() != null &&
+			final IType type = context.getExpectedType();
+			// following null check for type eliminates primitive types.
+			if (type != null && context.getCoreContext().getExpectedTypesSignatures() != null &&
 					context.getCoreContext().getExpectedTypesSignatures().length > 0) {
 				
 				final String expectedTypeFQN = toParameterizeFQN(context.getCoreContext().getExpectedTypesSignatures()[0]);	
 				
-				if (isUnsupportedType(expectedTypeFQN)) {
-					return Collections.emptyList();
+				try {
+					if (isUnsupportedType(expectedTypeFQN) || type.isEnum()) {
+						return Collections.emptyList();
+					}
+					return completionList(monitor, context, expectedTypeFQN);
+				} catch (JavaModelException e) {
+					CorePlugin.getDefault().logError(e.getMessage(), e);
 				}
-				return completionList(monitor, context, expectedTypeFQN);
 			} else {
 				return searchFromAST((JavaContentAssistInvocationContext) context, monitor);
 			}
