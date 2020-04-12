@@ -92,13 +92,13 @@ class CompletionASTVistor extends ASTVisitor {
 	@Override
 	public void endVisit(MethodInvocation node) {
 		if (lastFoundNode != null && lastFoundNode.equals(node)) {
-			processNoteForType(lastFoundNode);
+			processNodeForType(lastFoundNode);
 			doneProcessing = true;
 			lastFoundNode = null;
 		}
 	}
 	
-	private void processNoteForType(ASTNode node) {
+	private void processNodeForType(ASTNode node) {
 		Set<ITypeBinding> typesAtOffset = findParameterTypeAtOffset(getDeclaringType(node));
 		typesAtOffset.stream().map(t -> {
 			try {
