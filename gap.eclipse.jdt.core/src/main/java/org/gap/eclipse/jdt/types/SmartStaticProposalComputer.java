@@ -3,13 +3,15 @@ package org.gap.eclipse.jdt.types;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.eclipse.core.runtime.IProgressMonitor;
-import org.eclipse.jdt.core.IType;
+import org.eclipse.jdt.core.Signature;
 import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTParser;
+import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.ui.text.java.ContentAssistInvocationContext;
 import org.eclipse.jdt.ui.text.java.IJavaCompletionProposalComputer;
 import org.eclipse.jdt.ui.text.java.JavaContentAssistInvocationContext;
@@ -39,12 +41,15 @@ public class SmartStaticProposalComputer extends AbstractSmartProposalComputer i
 		
 		if (invocationContext instanceof JavaContentAssistInvocationContext) {
 			JavaContentAssistInvocationContext context = (JavaContentAssistInvocationContext) invocationContext;
-			if (context.getExpectedType() != null) {
-				IType expectedType = context.getExpectedType();
-				if (isUnsupportedType(expectedType.getFullyQualifiedName())) {
+			if (context.getCoreContext().getExpectedTypesSignatures() != null &&
+					context.getCoreContext().getExpectedTypesSignatures().length > 0) {
+				
+				final String expectedTypeFQN = toParameterizeFQN(context.getCoreContext().getExpectedTypesSignatures()[0]);	
+				
+				if (isUnsupportedType(expectedTypeFQN)) {
 					return Collections.emptyList();
 				}
-				return completionList(monitor, context, expectedType);
+				return completionList(monitor, context, expectedTypeFQN);
 			} else {
 				return searchFromAST((JavaContentAssistInvocationContext) context, monitor);
 			}
@@ -53,10 +58,10 @@ public class SmartStaticProposalComputer extends AbstractSmartProposalComputer i
 	}
 
 	private List<ICompletionProposal> completionList(IProgressMonitor monitor,
-			JavaContentAssistInvocationContext context, IType expectedType) {
+			JavaContentAssistInvocationContext context, String expectedTypeFQN) {
 		final Duration blockDuration = Duration.ofMillis(TIMEOUT);
 		if (!isPreceedSpaceNewKeyword(context)) {
-			return staticMemberFinder.find(expectedType, context, monitor, blockDuration).collect(Collectors.toList());
+			return staticMemberFinder.find(expectedTypeFQN, context, monitor, blockDuration).collect(Collectors.toList());
 		}
 		return Collections.emptyList();
 	}
@@ -72,11 +77,23 @@ public class SmartStaticProposalComputer extends AbstractSmartProposalComputer i
 		ASTNode ast = parser.createAST(monitor);
 		CompletionASTVistor visitor = new CompletionASTVistor(context);
 		ast.accept(visitor);
-		final IType expectedType = visitor.getExpectedType();
-		if (expectedType == null || isUnsupportedType(expectedType.getFullyQualifiedName())) {
+		
+		ITypeBinding expectedType = null;
+		if(visitor.getExpectedTypeBindings().size() > 1) {
+			Optional<ITypeBinding> type = visitor.getExpectedTypeBindings().stream().filter(t -> !(t.isEnum() || t.isPrimitive())).findFirst();
+			if(type.isPresent()) {
+				expectedType = type.get();
+			}
+		} else {
+			expectedType = visitor.getExpectedTypeBinding();
+		}
+		
+		
+		
+		if (expectedType == null || expectedType.isPrimitive() || isUnsupportedType(Signature.getTypeErasure(expectedType.getQualifiedName()))) {
 			return Collections.emptyList();
 		}
-		return completionList(monitor, context, expectedType);
+		return completionList(monitor, context, expectedType.getQualifiedName());
 	}
 
 	private boolean isPreceedSpaceNewKeyword(ContentAssistInvocationContext context) {

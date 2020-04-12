@@ -35,6 +35,7 @@ import com.google.common.collect.Sets;
 class CompletionASTVistor extends ASTVisitor {
 	private int offset;
 	private Set<IType> expectedTypes;
+	private Set<ITypeBinding> expectedTypeBindings;
 	private IJavaProject project;
 	private boolean preceedSpace = false;
 	private ASTNode lastFoundNode;
@@ -47,6 +48,7 @@ class CompletionASTVistor extends ASTVisitor {
 
 	public CompletionASTVistor(JavaContentAssistInvocationContext context) {
 		this.expectedTypes = new HashSet<>();
+		this.expectedTypeBindings = new HashSet<>();
 		this.offset = context.getInvocationOffset();
 		this.project = context.getProject();
 		try {
@@ -108,6 +110,7 @@ class CompletionASTVistor extends ASTVisitor {
 				return null;
 			}
 		}).filter(Predicates.notNull()).forEach(t -> expectedTypes.add(t));
+		expectedTypeBindings.addAll(typesAtOffset);
 	}
 
 	private Set<ITypeBinding> findParameterTypeAtOffset(ITypeBinding containerType) {
@@ -199,6 +202,10 @@ class CompletionASTVistor extends ASTVisitor {
 	public Set<IType> getExpectedTypes() {
 		return expectedTypes;
 	}
+	
+	public Set<ITypeBinding> getExpectedTypeBindings() {
+		return expectedTypeBindings;
+	}
 
 	public IType getExpectedType() {
 		Iterator<IType> iterator = expectedTypes.iterator();
@@ -208,6 +215,14 @@ class CompletionASTVistor extends ASTVisitor {
 		return null;
 	}
 	
+	public ITypeBinding getExpectedTypeBinding() {
+		Iterator<ITypeBinding> iterator = expectedTypeBindings.iterator();
+		if (iterator.hasNext()) {
+			return iterator.next();
+		}
+		return null;
+	}
+
 	public boolean isNonGenericEqual(ITypeBinding left, ITypeBinding right) {
 		 String leftName = Optional.ofNullable(left).map(ITypeBinding::getQualifiedName).map(this::genericErasure).orElse("");
 		 String rightName = Optional.ofNullable(right).map(ITypeBinding::getQualifiedName).map(this::genericErasure).orElse("");

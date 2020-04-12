@@ -36,6 +36,7 @@ import org.eclipse.jdt.ui.text.java.CompletionProposalCollector;
 import org.eclipse.jdt.ui.text.java.JavaContentAssistInvocationContext;
 import org.eclipse.jface.text.contentassist.ICompletionProposal;
 import org.gap.eclipse.jdt.CorePlugin;
+import org.gap.eclipse.jdt.common.Signatures;
 
 import com.google.common.base.Predicates;
 
@@ -45,9 +46,9 @@ public class StaticMemberFinder {
 	private CachedSearchParticipant cachedSearchParticipant = new CachedSearchParticipant(
 			new FilteredSearchParticipant(SearchEngine.getDefaultSearchParticipant()));
 
-	public Stream<ICompletionProposal> find(final IType expectedType, JavaContentAssistInvocationContext context,
+	public Stream<ICompletionProposal> find(final String expectedTypeFQN, JavaContentAssistInvocationContext context,
 			IProgressMonitor monitor, Duration timeout) {
-		return performSearch(expectedType, context, monitor, timeout)
+		return performSearch(expectedTypeFQN, context, monitor, timeout)
 				.map(m -> toCompletionProposal(m, context, monitor)).filter(Predicates.notNull());
 	}
 
@@ -155,8 +156,9 @@ public class StaticMemberFinder {
 		try {
 			if (member instanceof IMethod) {
 				String type = ((IMethod) member).getReturnType();
+				
 				if (Signature.getTypeSignatureKind(type) == Signature.getTypeSignatureKind(expectedTypeSig)) {
-					return Signature.getTypeErasure(expectedTypeSig).equals(Signature.getTypeErasure(type));
+					return Signatures.isAssignable(type, expectedTypeSig);
 				}
 				return false;
 			}
@@ -168,13 +170,14 @@ public class StaticMemberFinder {
 	}
 
 	@SuppressWarnings("deprecation")
-	private Stream<IMember> performSearch(IType expectedType, JavaContentAssistInvocationContext context,
+	private Stream<IMember> performSearch(String expectedTypeFQN, JavaContentAssistInvocationContext context,
 			IProgressMonitor monitor, Duration timeout) {
 		final SearchJobTracker searchJobTracker = new SearchJobTracker();
 		final SearchEngine engine = new SearchEngine();
-		final String erasureTypeSig = Signature.createTypeSignature(expectedType.getFullyQualifiedName(), true);
-		SearchPattern pattern = SearchPattern.createPattern(expectedType, IJavaSearchConstants.RETURN_TYPE_REFERENCE,
-				SearchPattern.R_CASE_SENSITIVE | SearchPattern.R_ERASURE_MATCH);
+		final String erasureTypeSig = Signature.createTypeSignature(expectedTypeFQN, true);
+		SearchPattern pattern = SearchPattern.createPattern(expectedTypeFQN, IJavaSearchConstants.TYPE,
+				IJavaSearchConstants.RETURN_TYPE_REFERENCE,
+				SearchPattern.R_CASE_SENSITIVE | SearchPattern.R_EQUIVALENT_MATCH);
 
 		if (context.getCoreContext().getToken().length > 0) {
 			SearchPattern tokenPattern = SearchPattern.createPattern(
@@ -192,7 +195,7 @@ public class StaticMemberFinder {
 		final Set<IMember> resultAccumerlator = Collections.synchronizedSet(new HashSet<>());
 		final ExecutorService executor = Executors.newSingleThreadExecutor();
 		searchJobTracker.startTracking();
-		cachedSearchParticipant.pushCurrentSearch(expectedType, new String(context.getCoreContext().getToken()));
+		cachedSearchParticipant.pushCurrentSearch(expectedTypeFQN, new String(context.getCoreContext().getToken()));
 		Future<?> task = executor.submit(() -> {
 			try {
 				engine.search(finalPattern, new SearchParticipant[] { cachedSearchParticipant },

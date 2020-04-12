@@ -6,7 +6,6 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.jdt.core.IMember;
-import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.search.IJavaSearchScope;
 import org.eclipse.jdt.core.search.SearchDocument;
 import org.eclipse.jdt.core.search.SearchMatch;
@@ -19,7 +18,7 @@ import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 
 public class CachedSearchParticipant extends SearchParticipant {
-	private IType lastType;
+	private String lastType;
 	
 	private String lastToken;
 	
@@ -76,10 +75,10 @@ public class CachedSearchParticipant extends SearchParticipant {
 		cache.put(match, match);
 	}
 	
-	public void pushCurrentSearch(IType type, String token) {
-		useCache = (lastType != null && lastType.equals(type) && 
+	public void pushCurrentSearch(String expectedTypeFQN, String token) {
+		useCache = (lastType != null && lastType.equals(expectedTypeFQN) && 
 				lastToken != null && (token.startsWith(lastToken) || lastToken.isEmpty()));
 		this.lastToken = token;
-		this.lastType = type;
+		this.lastType = expectedTypeFQN;
 	}
 }

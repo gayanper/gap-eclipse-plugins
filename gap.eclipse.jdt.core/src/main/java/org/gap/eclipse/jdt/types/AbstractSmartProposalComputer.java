@@ -47,4 +47,11 @@ public class AbstractSmartProposalComputer {
 	protected final boolean isUnsupportedType(String fqn) {
 		return unsupportedTypes.contains(fqn);
 	}
+	
+	protected final String toParameterizeFQN(char[] signature) {
+		final String sig = String.valueOf(signature);
+		final String qualifier = Signature.getSignatureQualifier(sig);
+		final String name = Signature.getSignatureSimpleName(sig);
+		return qualifier.concat(".").concat(name);
+	}
 }
