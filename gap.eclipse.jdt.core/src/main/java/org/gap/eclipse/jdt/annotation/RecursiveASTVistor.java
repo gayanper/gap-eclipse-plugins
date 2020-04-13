@@ -36,7 +36,7 @@ class RecursiveASTVistor extends ASTVisitor {
 	public boolean visit(MethodInvocation node) {
 		if (currentMethod.isPresent()) {
 			IMethodBinding binding = node.resolveMethodBinding();
-			if ((binding != null) && binding.equals(currentMethod.get())) {
+			if ((binding != null) && binding.getMethodDeclaration().equals(currentMethod.get().getMethodDeclaration())) {
 				createRecursiveMarker(node, context.getWorkingCopy().getResource());
 			}
 		}
