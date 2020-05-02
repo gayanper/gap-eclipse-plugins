@@ -165,4 +165,13 @@
             icon="icons/view16/sessionprocessor_types.png">
       </proposalCategory>
    </extension>
+   <extension
+         point="org.eclipse.e4.ui.css.swt.theme">
+      <stylesheet
+            uri="css/e4-dark_syntaxhighlighting.css">
+         <themeid
+               refid="org.eclipse.e4.ui.css.theme.e4_dark">
+         </themeid>
+      </stylesheet>
+   </extension>
 </plugin>
