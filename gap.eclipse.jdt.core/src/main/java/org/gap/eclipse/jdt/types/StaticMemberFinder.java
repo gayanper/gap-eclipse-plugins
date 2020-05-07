@@ -155,7 +155,7 @@ public class StaticMemberFinder {
 	private boolean matchReturnTypeIfMethod(IMember member, String expectedTypeSig) {
 		try {
 			if (member instanceof IMethod) {
-				String type = ((IMethod) member).getReturnType();
+				String type = Signatures.getFullQualifiedReturnType((IMethod) member);
 				
 				if (Signature.getTypeSignatureKind(type) == Signature.getTypeSignatureKind(expectedTypeSig)) {
 					return Signatures.isAssignable(type, expectedTypeSig);
@@ -182,11 +182,6 @@ public class StaticMemberFinder {
 		if (context.getCoreContext().getToken().length > 0) {
 			SearchPattern tokenPattern = SearchPattern.createPattern(
 					new String(context.getCoreContext().getToken()).concat("*"), IJavaSearchConstants.METHOD,
-					IJavaSearchConstants.DECLARATIONS, SearchPattern.R_PATTERN_MATCH);
-			pattern = SearchPattern.createAndPattern(pattern, tokenPattern);
-		} else {
-			// workaround for bug561268 until it is fixed
-			SearchPattern tokenPattern = SearchPattern.createPattern("*", IJavaSearchConstants.METHOD,
 					IJavaSearchConstants.DECLARATIONS, SearchPattern.R_PATTERN_MATCH);
 			pattern = SearchPattern.createAndPattern(pattern, tokenPattern);
 		}

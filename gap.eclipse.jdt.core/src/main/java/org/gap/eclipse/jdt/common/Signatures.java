@@ -1,5 +1,8 @@
 package org.gap.eclipse.jdt.common;
 
+import org.eclipse.jdt.core.IMethod;
+import org.eclipse.jdt.core.IPackageFragment;
+import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.Signature;
 
 public final class Signatures {
@@ -39,7 +42,19 @@ public final class Signatures {
 		return true;
 	}
 
-	public static void main(String[] args) {
-		System.out.println("");
+	public static String getFullQualifiedReturnType(IMethod method) throws JavaModelException {
+		final String returnType = method.getReturnType();
+
+		if(returnType.startsWith("Q")) {
+			StringBuilder builder = new StringBuilder();
+			String packageName = method.getDeclaringType().getPackageFragment().getElementName();
+			builder.append("L");
+			if(!packageName.equals(IPackageFragment.DEFAULT_PACKAGE_NAME)) {
+				builder.append(packageName).append(".");
+			}
+			builder.append(returnType.substring(1));
+			return builder.toString();
+		}
+		return returnType;
 	}
 }
