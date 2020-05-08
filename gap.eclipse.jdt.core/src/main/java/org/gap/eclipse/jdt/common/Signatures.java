@@ -20,6 +20,10 @@ public final class Signatures {
 		String[] sigArguments = Signature.getTypeArguments(signature);
 		String[] toArguments = Signature.getTypeArguments(toSignature);
 		
+		if(sigArguments.length != toArguments.length) {
+			return false;
+		}
+		
 		for(int i = 0; i < toArguments.length; i++) {
 			final String toArg = toArguments[i];
 			final String sigArg = sigArguments[i];
