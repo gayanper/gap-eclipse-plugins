@@ -174,17 +174,30 @@ public class StaticMemberFinder {
 			IProgressMonitor monitor, Duration timeout) {
 		final SearchJobTracker searchJobTracker = new SearchJobTracker();
 		final SearchEngine engine = new SearchEngine();
-		final String erasureTypeSig = Signature.createTypeSignature(expectedTypeFQN, true);
-		SearchPattern pattern = SearchPattern.createPattern(expectedTypeFQN, IJavaSearchConstants.TYPE,
-				IJavaSearchConstants.RETURN_TYPE_REFERENCE,
-				SearchPattern.R_CASE_SENSITIVE | SearchPattern.R_EQUIVALENT_MATCH);
+		
+		SearchPattern pattern = null;
+		final String typeSig = expectedTypeFQN.isEmpty() ? "" : Signature.createTypeSignature(expectedTypeFQN, true);
+		if(!expectedTypeFQN.isEmpty()) {
+			pattern = SearchPattern.createPattern(expectedTypeFQN, IJavaSearchConstants.TYPE,
+					IJavaSearchConstants.RETURN_TYPE_REFERENCE,
+					SearchPattern.R_CASE_SENSITIVE | SearchPattern.R_EQUIVALENT_MATCH);
+		}
 
 		if (context.getCoreContext().getToken().length > 0) {
 			SearchPattern tokenPattern = SearchPattern.createPattern(
 					new String(context.getCoreContext().getToken()).concat("*"), IJavaSearchConstants.METHOD,
 					IJavaSearchConstants.DECLARATIONS, SearchPattern.R_PATTERN_MATCH);
-			pattern = SearchPattern.createAndPattern(pattern, tokenPattern);
+			if(pattern != null) {
+				pattern = SearchPattern.createAndPattern(pattern, tokenPattern);
+			} else {
+				pattern = tokenPattern;
+			}
 		}
+		
+		if(pattern == null) {
+			throw new IllegalStateException("null pattern found, problem with parameter combination.");
+		}
+		
 		final SearchPattern finalPattern = pattern;
 
 		final Set<IMember> resultAccumerlator = Collections.synchronizedSet(new HashSet<>());
@@ -203,7 +216,7 @@ public class StaticMemberFinder {
 								cachedSearchParticipant.cacheMatch(match);
 								if (match.getElement() instanceof IMember) {
 									final IMember member = (IMember) match.getElement();
-									if (onlyPublicStatic(member) && matchReturnTypeIfMethod(member, erasureTypeSig)) {
+									if (onlyPublicStatic(member) && (typeSig.isEmpty() || matchReturnTypeIfMethod(member, typeSig))) {
 										resultAccumerlator.add((IMember) match.getElement());
 									}
 								}

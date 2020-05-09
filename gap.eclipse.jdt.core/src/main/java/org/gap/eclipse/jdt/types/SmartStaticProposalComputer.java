@@ -96,7 +96,9 @@ public class SmartStaticProposalComputer extends AbstractSmartProposalComputer i
 			expectedType = visitor.getExpectedTypeBinding();
 		}
 		
-		
+		if(expectedType == null && context.getCoreContext().getToken().length > 0) {
+			return completionList(monitor, context, "");
+		}
 		
 		if (expectedType == null || expectedType.isPrimitive() || isUnsupportedType(Signature.getTypeErasure(expectedType.getQualifiedName()))) {
 			return Collections.emptyList();
