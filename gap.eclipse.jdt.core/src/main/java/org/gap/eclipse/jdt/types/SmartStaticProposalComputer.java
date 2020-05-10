@@ -93,7 +93,7 @@ public class SmartStaticProposalComputer extends AbstractSmartProposalComputer i
 			.collect(Collectors.toList());
 		
 		
-		if(expectedTypeNames.isEmpty() &&  context.getCoreContext().getToken() != null & context.getCoreContext().getToken().length > 0) {
+		if(expectedTypeNames.isEmpty() &&  context.getCoreContext().getToken() != null && context.getCoreContext().getToken().length > 0) {
 			return completionList(monitor, context, Collections.emptyList());
 		}
 		

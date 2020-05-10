@@ -128,10 +128,10 @@ class CompletionASTVistor extends ASTVisitor {
 		final List<ASTNode> arguments = argumentSupplier.get();
 		final List<ITypeBinding> parameters = parameterSupplier.apply(binding);
 		final List<IMethodBinding> overloads = searchInOverloadMethods ? findFromOverloaded(binding, containerType) : Collections.emptyList();
-		
+		boolean checkInOverloads =!overloads.isEmpty();
 		if (arguments.isEmpty()) {
 			if (!parameters.isEmpty()) {
-				if(overloads.size() > 1) {
+				if(checkInOverloads) {
 					return overloads.stream().filter(m -> m.getParameterTypes().length > 0)
 							.map(m -> resolveType(m.getParameterTypes()[0]))
 							.collect(Collectors.toSet());
@@ -153,11 +153,20 @@ class CompletionASTVistor extends ASTVisitor {
 				}
 				lastType = resolveTypeBinding(astNode);
 			}
+			
+			// we might be trying to resolve the first argument while others are filled in like
+			// collect(<caret>, new X(), new Y()), but we want overloads if those other arguments
+			// are not filled.
+			if (typeIndex == -1 && checkOffset < arguments.get(0).getStartPosition()
+					&& binding.getParameterTypes().length - arguments.size() == 1) {
+				typeIndex = 0;
+				checkInOverloads = false;
+			}
 
 			if (binding != null && typeIndex > -1) {
 				final int pIndex = typeIndex;
 				final ITypeBinding lType = lastType;
-				if (overloads.size() > 1) {
+				if (checkInOverloads) {
 					return overloads.stream().filter(m -> m.getParameterTypes().length >= pIndex + 1 || m.isVarargs())
 							.map(m -> {
 								// on statement line test(field$) we end up in this block even for the first parameter.

@@ -194,7 +194,7 @@ public class StaticMemberFinder {
 			
 		}
 
-		if (context.getCoreContext().getToken().length > 0) {
+		if (context.getCoreContext().getToken() != null && context.getCoreContext().getToken().length > 0) {
 			searchInMask = searchInMask | JavaSearchScope.REFERENCED_PROJECTS | JavaSearchScope.APPLICATION_LIBRARIES;
 			SearchPattern tokenPattern = SearchPattern.createPattern(
 					new String(context.getCoreContext().getToken()).concat("*"), IJavaSearchConstants.METHOD,
@@ -205,9 +205,10 @@ public class StaticMemberFinder {
 				pattern = tokenPattern;
 			}
 		}
-		
+
+		// refactor code to avoid this hack.
 		if(pattern == null) {
-			throw new IllegalStateException("null pattern found, problem with parameter combination.");
+			return Stream.empty();
 		}
 		
 		final SearchPattern finalPattern = pattern;
