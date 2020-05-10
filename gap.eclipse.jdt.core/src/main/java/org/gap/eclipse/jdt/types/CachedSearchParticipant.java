@@ -1,6 +1,7 @@
 package org.gap.eclipse.jdt.types;
 
 import java.util.Collection;
+import java.util.List;
 
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
@@ -18,7 +19,7 @@ import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 
 public class CachedSearchParticipant extends SearchParticipant {
-	private String lastType;
+	private List<String> lastType;
 	
 	private String lastToken;
 	
@@ -75,10 +76,10 @@ public class CachedSearchParticipant extends SearchParticipant {
 		cache.put(match, match);
 	}
 	
-	public void beforeSearch(String expectedTypeFQN, String token) {
-		useCache = (lastType != null && lastType.equals(expectedTypeFQN) && 
+	public void beforeSearch(List<String> expectedTypeFQNs, String token) {
+		useCache = (lastType != null && lastType.equals(expectedTypeFQNs) && 
 				lastToken != null && (lastToken.equals(token) || (!lastToken.isEmpty() && token.startsWith(lastToken))));
 		this.lastToken = token;
-		this.lastType = expectedTypeFQN;
+		this.lastType = expectedTypeFQNs;
 	}
 }

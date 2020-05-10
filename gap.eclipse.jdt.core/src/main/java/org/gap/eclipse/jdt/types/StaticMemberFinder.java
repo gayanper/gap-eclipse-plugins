@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -46,9 +47,9 @@ public class StaticMemberFinder {
 	private CachedSearchParticipant cachedSearchParticipant = new CachedSearchParticipant(
 			new FilteredSearchParticipant(SearchEngine.getDefaultSearchParticipant()));
 
-	public Stream<ICompletionProposal> find(final String expectedTypeFQN, JavaContentAssistInvocationContext context,
+	public Stream<ICompletionProposal> find(final List<String> expectedTypeFQNs, JavaContentAssistInvocationContext context,
 			IProgressMonitor monitor, Duration timeout) {
-		return performSearch(expectedTypeFQN, context, monitor, timeout)
+		return performSearch(expectedTypeFQNs, context, monitor, timeout)
 				.map(m -> toCompletionProposal(m, context, monitor)).filter(Predicates.notNull());
 	}
 
@@ -152,13 +153,16 @@ public class StaticMemberFinder {
 		}
 	}
 
-	private boolean matchReturnTypeIfMethod(IMember member, String expectedTypeSig) {
+	private boolean matchReturnTypeIfMethod(IMember member, List<String> typeSigs) {
 		try {
 			if (member instanceof IMethod) {
-				String type = Signatures.getFullQualifiedReturnType((IMethod) member);
-				
-				if (Signature.getTypeSignatureKind(type) == Signature.getTypeSignatureKind(expectedTypeSig)) {
-					return Signatures.isAssignable(type, expectedTypeSig);
+				String type = Signatures.getFullQualifiedResolvedReturnType((IMethod) member);
+
+				for (String typeSig : typeSigs) {
+					if (Signature.getTypeSignatureKind(type) == Signature.getTypeSignatureKind(typeSig) &&
+							Signatures.isAssignable(type, typeSig)) {
+							return true;
+					}
 				}
 				return false;
 			}
@@ -170,7 +174,7 @@ public class StaticMemberFinder {
 	}
 
 	@SuppressWarnings("deprecation")
-	private Stream<IMember> performSearch(String expectedTypeFQN, JavaContentAssistInvocationContext context,
+	private Stream<IMember> performSearch(List<String> expectedTypeFQNs, JavaContentAssistInvocationContext context,
 			IProgressMonitor monitor, Duration timeout) {
 		final SearchJobTracker searchJobTracker = new SearchJobTracker();
 		final SearchEngine engine = new SearchEngine();
@@ -178,11 +182,16 @@ public class StaticMemberFinder {
 		SearchPattern pattern = null;
 		int searchInMask = JavaSearchScope.SYSTEM_LIBRARIES | JavaSearchScope.SOURCES;
 
-		final String typeSig = expectedTypeFQN.isEmpty() ? "" : Signature.createTypeSignature(expectedTypeFQN, true);
-		if(!expectedTypeFQN.isEmpty()) {
-			pattern = SearchPattern.createPattern(expectedTypeFQN, IJavaSearchConstants.TYPE,
-					IJavaSearchConstants.RETURN_TYPE_REFERENCE,
-					SearchPattern.R_CASE_SENSITIVE | SearchPattern.R_ERASURE_MATCH);
+		final List<String> typeSigs = expectedTypeFQNs.isEmpty() ? Collections.emptyList(): 
+			expectedTypeFQNs.stream().map(f -> Signature.createTypeSignature(f, true)).collect(Collectors.toList());
+		if(!expectedTypeFQNs.isEmpty()) {
+			for (String fqn : expectedTypeFQNs) {
+				SearchPattern p = SearchPattern.createPattern(fqn, IJavaSearchConstants.TYPE,
+						IJavaSearchConstants.RETURN_TYPE_REFERENCE,
+						SearchPattern.R_CASE_SENSITIVE | SearchPattern.R_ERASURE_MATCH);
+				pattern = pattern == null ? p : SearchPattern.createOrPattern(pattern, p);
+			}
+			
 		}
 
 		if (context.getCoreContext().getToken().length > 0) {
@@ -207,7 +216,7 @@ public class StaticMemberFinder {
 		final Set<IMember> resultAccumerlator = Collections.synchronizedSet(new HashSet<>());
 		final ExecutorService executor = Executors.newSingleThreadExecutor();
 		searchJobTracker.startTracking();
-		cachedSearchParticipant.beforeSearch(expectedTypeFQN, new String(context.getCoreContext().getToken()));
+		cachedSearchParticipant.beforeSearch(expectedTypeFQNs, new String(context.getCoreContext().getToken()));
 		Future<?> task = executor.submit(() -> {
 			try {
 				engine.search(finalPattern, new SearchParticipant[] { cachedSearchParticipant },
@@ -223,7 +232,7 @@ public class StaticMemberFinder {
 								cachedSearchParticipant.cacheMatch(match);
 								if (match.getElement() instanceof IMember) {
 									final IMember member = (IMember) match.getElement();
-									if (onlyPublicStatic(member) && (typeSig.isEmpty() || matchReturnTypeIfMethod(member, typeSig))) {
+									if (onlyPublicStatic(member) && (typeSigs.isEmpty() || matchReturnTypeIfMethod(member, typeSigs))) {
 										resultAccumerlator.add((IMember) match.getElement());
 									}
 								}

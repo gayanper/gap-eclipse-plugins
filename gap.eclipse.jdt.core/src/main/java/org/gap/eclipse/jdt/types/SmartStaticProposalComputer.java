@@ -1,9 +1,9 @@
 package org.gap.eclipse.jdt.types;
 
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.eclipse.core.runtime.IProgressMonitor;
@@ -51,25 +51,25 @@ public class SmartStaticProposalComputer extends AbstractSmartProposalComputer i
 				final String expectedTypeFQN = toParameterizeFQN(context.getCoreContext().getExpectedTypesSignatures()[0]);	
 				
 				try {
-					if (isUnsupportedType(expectedTypeFQN) || type.isEnum()) {
+					if (isUnsupportedType(Signature.getTypeErasure(expectedTypeFQN)) || type.isEnum()) {
 						return Collections.emptyList();
 					}
-					return completionList(monitor, context, expectedTypeFQN);
+					return completionList(monitor, context, Arrays.asList(expectedTypeFQN));
 				} catch (JavaModelException e) {
 					CorePlugin.getDefault().logError(e.getMessage(), e);
 				}
 			} else {
-				return searchFromAST((JavaContentAssistInvocationContext) context, monitor);
+				return searchFromAST(context, monitor);
 			}
 		}
 		return Collections.emptyList();
 	}
 
 	private List<ICompletionProposal> completionList(IProgressMonitor monitor,
-			JavaContentAssistInvocationContext context, String expectedTypeFQN) {
+			JavaContentAssistInvocationContext context, List<String> typeNames) {
 		final Duration blockDuration = Duration.ofMillis(TIMEOUT);
 		if (!isPreceedSpaceNewKeyword(context)) {
-			return staticMemberFinder.find(expectedTypeFQN, context, monitor, blockDuration).collect(Collectors.toList());
+			return staticMemberFinder.find(typeNames, context, monitor, blockDuration).collect(Collectors.toList());
 		}
 		return Collections.emptyList();
 	}
@@ -83,27 +83,21 @@ public class SmartStaticProposalComputer extends AbstractSmartProposalComputer i
 		parser.setStatementsRecovery(true);
 		parser.setBindingsRecovery(true);
 		ASTNode ast = parser.createAST(monitor);
-		CompletionASTVistor visitor = new CompletionASTVistor(context, false);
+		CompletionASTVistor visitor = new CompletionASTVistor(context);
 		ast.accept(visitor);
 		
-		ITypeBinding expectedType = null;
-		if(visitor.getExpectedTypeBindings().size() > 1) {
-			Optional<ITypeBinding> type = visitor.getExpectedTypeBindings().stream().filter(t -> !(t.isEnum() || t.isPrimitive())).findFirst();
-			if(type.isPresent()) {
-				expectedType = type.get();
-			}
-		} else {
-			expectedType = visitor.getExpectedTypeBinding();
+		List<String> expectedTypeNames = visitor.getExpectedTypeBindings().stream()
+			.filter(t -> !(t.isEnum() || t.isPrimitive()))
+			.map(ITypeBinding::getQualifiedName)
+			.filter(t -> !isUnsupportedType(Signature.getTypeErasure(t)))
+			.collect(Collectors.toList());
+		
+		
+		if(expectedTypeNames.isEmpty() &&  context.getCoreContext().getToken() != null & context.getCoreContext().getToken().length > 0) {
+			return completionList(monitor, context, Collections.emptyList());
 		}
 		
-		if(expectedType == null &&  context.getCoreContext().getToken() != null & context.getCoreContext().getToken().length > 0) {
-			return completionList(monitor, context, "");
-		}
-		
-		if (expectedType == null || expectedType.isPrimitive() || isUnsupportedType(Signature.getTypeErasure(expectedType.getQualifiedName()))) {
-			return Collections.emptyList();
-		}
-		return completionList(monitor, context, expectedType.getQualifiedName());
+		return completionList(monitor, context, expectedTypeNames);
 	}
 
 	private boolean isPreceedSpaceNewKeyword(ContentAssistInvocationContext context) {

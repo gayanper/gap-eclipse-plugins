@@ -1,7 +1,6 @@
 package org.gap.eclipse.jdt.common;
 
 import org.eclipse.jdt.core.IMethod;
-import org.eclipse.jdt.core.IPackageFragment;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.Signature;
 
@@ -51,18 +50,18 @@ public final class Signatures {
 		return true;
 	}
 
-	public static String getFullQualifiedReturnType(IMethod method) throws JavaModelException {
+	public static String getFullQualifiedResolvedReturnType(IMethod method) throws JavaModelException {
 		final String returnType = method.getReturnType();
 
 		if(returnType.startsWith("Q")) {
-			StringBuilder builder = new StringBuilder();
-			String packageName = method.getDeclaringType().getPackageFragment().getElementName();
-			builder.append("L");
-			if(!packageName.equals(IPackageFragment.DEFAULT_PACKAGE_NAME)) {
-				builder.append(packageName).append(".");
+			String simpleName = Signature.getSignatureSimpleName(returnType);
+			int typeParamIndex = simpleName.indexOf('<');
+			if(typeParamIndex > -1) {
+				simpleName = simpleName.substring(0, typeParamIndex);
 			}
-			builder.append(returnType.substring(1));
-			return builder.toString();
+			String resolvedType = Signature.toQualifiedName(
+					method.getDeclaringType().resolveType(Signature.toString(returnType))[0]);
+			return returnType.replace(simpleName, resolvedType).replace('Q', 'L');
 		}
 		return returnType;
 	}
