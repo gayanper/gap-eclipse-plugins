@@ -75,9 +75,9 @@ public class CachedSearchParticipant extends SearchParticipant {
 		cache.put(match, match);
 	}
 	
-	public void pushCurrentSearch(String expectedTypeFQN, String token) {
+	public void beforeSearch(String expectedTypeFQN, String token) {
 		useCache = (lastType != null && lastType.equals(expectedTypeFQN) && 
-				lastToken != null && (token.startsWith(lastToken) || lastToken.isEmpty()));
+				lastToken != null && (lastToken.equals(token) || (!lastToken.isEmpty() && token.startsWith(lastToken))));
 		this.lastToken = token;
 		this.lastType = expectedTypeFQN;
 	}

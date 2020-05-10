@@ -145,7 +145,7 @@ public class StaticMemberFinder {
 
 	private boolean onlyPublicStatic(IMember member) {
 		try {
-			return Flags.isStatic(member.getFlags()) && Flags.isPublic(member.getFlags());
+			return Flags.isStatic(member.getFlags()) && Flags.isPublic(member.getFlags()) && Flags.isPublic(member.getDeclaringType().getFlags());
 		} catch (JavaModelException e) {
 			CorePlugin.getDefault().logError(e.getMessage(), e);
 			return false;
@@ -176,14 +176,17 @@ public class StaticMemberFinder {
 		final SearchEngine engine = new SearchEngine();
 		
 		SearchPattern pattern = null;
+		int searchInMask = JavaSearchScope.SYSTEM_LIBRARIES | JavaSearchScope.SOURCES;
+
 		final String typeSig = expectedTypeFQN.isEmpty() ? "" : Signature.createTypeSignature(expectedTypeFQN, true);
 		if(!expectedTypeFQN.isEmpty()) {
 			pattern = SearchPattern.createPattern(expectedTypeFQN, IJavaSearchConstants.TYPE,
 					IJavaSearchConstants.RETURN_TYPE_REFERENCE,
-					SearchPattern.R_CASE_SENSITIVE | SearchPattern.R_EQUIVALENT_MATCH);
+					SearchPattern.R_CASE_SENSITIVE | SearchPattern.R_ERASURE_MATCH);
 		}
 
 		if (context.getCoreContext().getToken().length > 0) {
+			searchInMask = searchInMask | JavaSearchScope.REFERENCED_PROJECTS | JavaSearchScope.APPLICATION_LIBRARIES;
 			SearchPattern tokenPattern = SearchPattern.createPattern(
 					new String(context.getCoreContext().getToken()).concat("*"), IJavaSearchConstants.METHOD,
 					IJavaSearchConstants.DECLARATIONS, SearchPattern.R_PATTERN_MATCH);
@@ -199,20 +202,24 @@ public class StaticMemberFinder {
 		}
 		
 		final SearchPattern finalPattern = pattern;
+		final int includeMask = searchInMask;
 
 		final Set<IMember> resultAccumerlator = Collections.synchronizedSet(new HashSet<>());
 		final ExecutorService executor = Executors.newSingleThreadExecutor();
 		searchJobTracker.startTracking();
-		cachedSearchParticipant.pushCurrentSearch(expectedTypeFQN, new String(context.getCoreContext().getToken()));
+		cachedSearchParticipant.beforeSearch(expectedTypeFQN, new String(context.getCoreContext().getToken()));
 		Future<?> task = executor.submit(() -> {
 			try {
 				engine.search(finalPattern, new SearchParticipant[] { cachedSearchParticipant },
 						SearchEngine.createJavaSearchScope(new IJavaElement[] { context.getProject() },
-								JavaSearchScope.REFERENCED_PROJECTS | JavaSearchScope.APPLICATION_LIBRARIES
-										| JavaSearchScope.SYSTEM_LIBRARIES | JavaSearchScope.SOURCES),
+								includeMask),
 						new SearchRequestor() {
 							@Override
 							public void acceptSearchMatch(SearchMatch match) throws CoreException {
+								if(match.getAccuracy() == SearchMatch.A_INACCURATE) {
+									return;
+								}
+								
 								cachedSearchParticipant.cacheMatch(match);
 								if (match.getElement() instanceof IMember) {
 									final IMember member = (IMember) match.getElement();
