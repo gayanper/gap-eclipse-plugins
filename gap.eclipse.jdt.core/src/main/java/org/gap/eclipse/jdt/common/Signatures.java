@@ -36,7 +36,12 @@ public final class Signatures {
 					startSigOffset = 1;
 				}
 				if(!Signature.getSignatureQualifier(sigArg.substring(startSigOffset)).isEmpty()) {
-					// if not type param then the type should match
+					// if not type param then the type should match or assignable
+					if(Signature.getSignatureQualifier(toArg).isEmpty()) {
+						// on the toArg we have type parameter to it assignable
+						return true;
+					}
+					
 					if(!toArg.equals(sigArg.substring(startSigOffset))) {
 						return false;
 					}

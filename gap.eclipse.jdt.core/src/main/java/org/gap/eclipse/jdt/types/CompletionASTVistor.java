@@ -45,8 +45,13 @@ class CompletionASTVistor extends ASTVisitor {
 	private Supplier<List<ASTNode>> argumentSupplier;
 	private Function<IMethodBinding, List<ITypeBinding>> parameterSupplier;
 	private Supplier<IMethodBinding> bindingSupplier;
+	private boolean searchInOverloadMethods;
 
 	public CompletionASTVistor(JavaContentAssistInvocationContext context) {
+		this(context, true);
+	}
+	public CompletionASTVistor(JavaContentAssistInvocationContext context, boolean searchInOverloadMethods) {
+		this.searchInOverloadMethods = searchInOverloadMethods;
 		this.expectedTypes = new HashSet<>();
 		this.expectedTypeBindings = new HashSet<>();
 		this.offset = context.getInvocationOffset();
@@ -122,7 +127,7 @@ class CompletionASTVistor extends ASTVisitor {
 
 		final List<ASTNode> arguments = argumentSupplier.get();
 		final List<ITypeBinding> parameters = parameterSupplier.apply(binding);
-		final List<IMethodBinding> overloads = findFromOverloaded(binding, containerType);
+		final List<IMethodBinding> overloads = searchInOverloadMethods ? findFromOverloaded(binding, containerType) : Collections.emptyList();
 		
 		if (arguments.isEmpty()) {
 			if (!parameters.isEmpty()) {

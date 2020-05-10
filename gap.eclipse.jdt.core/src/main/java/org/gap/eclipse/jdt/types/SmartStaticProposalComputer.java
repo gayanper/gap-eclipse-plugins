@@ -83,7 +83,7 @@ public class SmartStaticProposalComputer extends AbstractSmartProposalComputer i
 		parser.setStatementsRecovery(true);
 		parser.setBindingsRecovery(true);
 		ASTNode ast = parser.createAST(monitor);
-		CompletionASTVistor visitor = new CompletionASTVistor(context);
+		CompletionASTVistor visitor = new CompletionASTVistor(context, false);
 		ast.accept(visitor);
 		
 		ITypeBinding expectedType = null;
@@ -96,7 +96,7 @@ public class SmartStaticProposalComputer extends AbstractSmartProposalComputer i
 			expectedType = visitor.getExpectedTypeBinding();
 		}
 		
-		if(expectedType == null && context.getCoreContext().getToken().length > 0) {
+		if(expectedType == null &&  context.getCoreContext().getToken() != null & context.getCoreContext().getToken().length > 0) {
 			return completionList(monitor, context, "");
 		}
 		

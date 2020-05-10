@@ -75,8 +75,14 @@ public class SignaturesAssignableTest {
 
 	@Test
 	public void testOnlyOneTypeParamSignature_ToSignatureWithoutTypeParam() {
-		String sig = Signature.createTypeSignature("java.lang.List<E>", true);
+		String sig = Signature.createTypeSignature("java.lang.List<java.lang.String>", true);
 		String toSig = Signature.createTypeSignature("java.lang.List", true);
 		assertFalse("Signatures are assignale", Signatures.isAssignable(sig, toSig));
+	}
+
+	public void testSignatures_FromWithParam_ToQualified() {
+		String sig = Signature.createTypeSignature("java.lang.List<java.lang.String>", true);
+		String toSig = Signature.createTypeSignature("java.lang.List<E>", true);
+		assertTrue("Signatures are not assignale", Signatures.isAssignable(sig, toSig));
 	}
 }
