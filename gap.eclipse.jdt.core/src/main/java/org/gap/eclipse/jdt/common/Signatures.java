@@ -5,6 +5,7 @@ import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.Signature;
 
 public final class Signatures {
+	//TODO: This class needs to be refactored to use with correct signatures. Currently its a mixed.
 	private Signatures() {
 		
 	}
@@ -15,11 +16,11 @@ public final class Signatures {
 			return false;
 		}
 
-		// check if the both signatures have the same type parameters
+		// check if the both signatures have the same type parameters or at least to-side is open like (X<Object> = X)
 		String[] sigArguments = Signature.getTypeArguments(signature);
 		String[] toArguments = Signature.getTypeArguments(toSignature);
 		
-		if(sigArguments.length != toArguments.length) {
+		if(toArguments.length > 0 && sigArguments.length != toArguments.length) {
 			return false;
 		}
 		
@@ -63,6 +64,18 @@ public final class Signatures {
 					method.getDeclaringType().resolveType(Signature.toString(returnType))[0]);
 			return returnType.replace(simpleName, resolvedType).replace('Q', 'L');
 		}
-		return returnType;
+		return returnType.replace('$', '.');
+	}
+	
+	public static boolean isNoOfTypeParametersEqual(String sigLeft, String sigRight) {
+		int leftStartIndex = sigLeft.indexOf('<');
+		String leftParamSection = leftStartIndex > -1 ? sigLeft.substring(leftStartIndex + 1, sigLeft.indexOf('>')) : null;
+		
+		int rightStartIndex = sigRight.indexOf('<');
+		String rightParamSection = rightStartIndex > -1 ? sigRight.substring(rightStartIndex + 1, sigRight.indexOf('>')) : null;
+		
+		String[] leftArguments = leftParamSection != null ? leftParamSection.split(",") : new String[0];
+		String[] rightArguments = rightParamSection != null ? rightParamSection.split(","): new String[0];
+		return leftArguments.length == rightArguments.length;
 	}
 }
