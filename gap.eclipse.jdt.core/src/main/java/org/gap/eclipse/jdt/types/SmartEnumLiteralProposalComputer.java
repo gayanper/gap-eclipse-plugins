@@ -8,6 +8,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.jdt.core.CompletionProposal;
 import org.eclipse.jdt.core.Flags;
@@ -19,6 +20,12 @@ import org.eclipse.jdt.core.Signature;
 import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTParser;
+import org.eclipse.jdt.core.search.IJavaSearchConstants;
+import org.eclipse.jdt.core.search.SearchEngine;
+import org.eclipse.jdt.core.search.SearchMatch;
+import org.eclipse.jdt.core.search.SearchParticipant;
+import org.eclipse.jdt.core.search.SearchPattern;
+import org.eclipse.jdt.core.search.SearchRequestor;
 import org.eclipse.jdt.ui.text.java.CompletionProposalCollector;
 import org.eclipse.jdt.ui.text.java.ContentAssistInvocationContext;
 import org.eclipse.jdt.ui.text.java.IJavaCompletionProposalComputer;
@@ -78,17 +85,31 @@ public class SmartEnumLiteralProposalComputer extends AbstractSmartProposalCompu
 		ASTNode ast = parser.createAST(monitor);
 		CompletionASTVistor visitor = new CompletionASTVistor(context);
 		ast.accept(visitor);
-		return visitor.getExpectedTypes().stream()
+		return visitor.getExpectedTypes().stream().parallel()
 			.filter(t -> !isUnsupportedType(t.getFullyQualifiedName()))
 			.flatMap(t -> {
 					try {
 						if(t.isInterface()) {
-							return Arrays.stream(t.newTypeHierarchy(monitor).getImplementingClasses(t));
+							List<IType> types = new ArrayList<>();
+							SearchPattern pattern = SearchPattern.createPattern(t, IJavaSearchConstants.IMPLEMENTORS);
+							SearchEngine engine = new SearchEngine();
+							engine.search(pattern, new SearchParticipant[] { SearchEngine.getDefaultSearchParticipant()}, 
+									SearchEngine.createJavaSearchScope(new IJavaElement[] { context.getProject() }), new SearchRequestor() {
+
+										@Override
+										public void acceptSearchMatch(SearchMatch match) throws CoreException {
+											if(match.getAccuracy() == SearchMatch.A_ACCURATE &&
+													match.getElement() instanceof IType) {
+												types.add((IType) match.getElement());
+											}
+										}
+							}, monitor);
+							return types.stream();
 						}
-					} catch (JavaModelException e) {
+					} catch (CoreException e) {
 						CorePlugin.getDefault().logError(e.getMessage(), e);
 					}
-					return Stream.of(t);
+					return Stream.empty();
 				})
 			.flatMap(t -> {
 					try {
