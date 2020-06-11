@@ -82,4 +82,9 @@ public class CachedSearchParticipant extends SearchParticipant {
 		this.lastToken = token;
 		this.lastType = expectedTypeFQNs;
 	}
+	
+	public void resetCache() {
+		lastToken = null;
+		lastType = null;
+	}
 }

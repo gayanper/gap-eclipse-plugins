@@ -41,6 +41,8 @@ public class SmartEnumLiteralProposalComputer extends AbstractSmartProposalCompu
 
 	public static final String CATEGORY_ID = "gap.eclipse.jdt.proposalCategory.smartEnum";
 
+	private final LastInvocation lastInvocation = new LastInvocation();
+
 	@Override
 	public void sessionStarted() {
 	}
@@ -89,7 +91,7 @@ public class SmartEnumLiteralProposalComputer extends AbstractSmartProposalCompu
 			.filter(t -> !isUnsupportedType(t.getFullyQualifiedName()))
 			.flatMap(t -> {
 					try {
-						if(t.isInterface()) {
+						if(t.isInterface() && lastInvocation.canPerformSecondarySearch(context)) {
 							List<IType> types = new ArrayList<>();
 							SearchPattern pattern = SearchPattern.createPattern(t, IJavaSearchConstants.IMPLEMENTORS);
 							SearchEngine engine = new SearchEngine();
@@ -105,6 +107,8 @@ public class SmartEnumLiteralProposalComputer extends AbstractSmartProposalCompu
 										}
 							}, monitor);
 							return types.stream();
+						} else {
+							return Stream.of(t);
 						}
 					} catch (CoreException e) {
 						CorePlugin.getDefault().logError(e.getMessage(), e);

@@ -27,7 +27,7 @@ public class SmartStaticProposalComputer extends AbstractSmartProposalComputer i
 
 	private StaticMemberFinder staticMemberFinder = new StaticMemberFinder();
 
-	private final static long TIMEOUT = Long.getLong("org.gap.eclipse.jdt.types.smartStaticTimeout", 3000);
+	private final static long TIMEOUT = Long.getLong("org.gap.eclipse.jdt.types.smartStaticTimeout", 4000);
 
 	@Override
 	public void sessionStarted() {

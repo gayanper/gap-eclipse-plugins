@@ -52,18 +52,18 @@ public class StaticMemberFinder {
 
 	public Stream<ICompletionProposal> find(final List<String> expectedTypeFQNs,
 			JavaContentAssistInvocationContext context, IProgressMonitor monitor, Duration timeout) {
-
-		List<String> expandSearchTypes = expectedTypeFQNs;
 		boolean extendedSearch = context.getCoreContext().getToken() != null
 				&& context.getCoreContext().getToken().length > 0;
-
+	
 		if (lastInvocation.canPerformSecondarySearch(context)) {
-			expandSearchTypes = expandSearchTypes(expectedTypeFQNs, context, monitor);
-			expandSearchTypes.addAll(expectedTypeFQNs);
+			if(!lastInvocation.wasLastSecondarySearch()) {
+				cachedSearchParticipant.resetCache();
+			}
+			
 			extendedSearch = true;
 		}
-
-		return performSearch(expandSearchTypes, context, monitor, timeout, extendedSearch)
+	
+		return performSearch(expectedTypeFQNs, context, monitor, timeout, extendedSearch)
 				.map(m -> toCompletionProposal(m, context, monitor)).filter(Predicates.notNull());
 	}
 
@@ -235,55 +235,63 @@ public class StaticMemberFinder {
 	}
 
 	@SuppressWarnings("deprecation")
-	private Stream<IMember> performSearch(List<String> expectedTypeFQNs, JavaContentAssistInvocationContext context,
+	private Stream<IMember> performSearch(List<String> typeFQNs, JavaContentAssistInvocationContext context,
 			IProgressMonitor monitor, Duration timeout, boolean extendedSearch) {
 		final SearchJobTracker searchJobTracker = new SearchJobTracker();
 		final SearchEngine engine = new SearchEngine();
 
-		SearchPattern pattern = null;
-		int searchInMask = JavaSearchScope.SYSTEM_LIBRARIES | JavaSearchScope.SOURCES;
-
-		final List<String> typeSigs = expectedTypeFQNs.isEmpty() ? Collections.emptyList()
-				: expectedTypeFQNs.stream().map(f -> Signature.createTypeSignature(f, true))
-						.collect(Collectors.toList());
-		if (!expectedTypeFQNs.isEmpty()) {
-			for (String fqn : expectedTypeFQNs) {
-				SearchPattern p = SearchPattern.createPattern(fqn, IJavaSearchConstants.TYPE,
-						IJavaSearchConstants.RETURN_TYPE_REFERENCE,
-						SearchPattern.R_CASE_SENSITIVE | SearchPattern.R_ERASURE_MATCH);
-				pattern = pattern == null ? p : SearchPattern.createOrPattern(p, pattern);
-			}
-		}
-
-		if (extendedSearch) {
-			searchInMask = searchInMask | JavaSearchScope.REFERENCED_PROJECTS | JavaSearchScope.APPLICATION_LIBRARIES;
-		}
-
-		if (context.getCoreContext().getToken() != null && context.getCoreContext().getToken().length > 0) {
-			SearchPattern tokenPattern = SearchPattern.createPattern(
-					new String(context.getCoreContext().getToken()).concat("*"), IJavaSearchConstants.METHOD,
-					IJavaSearchConstants.DECLARATIONS, SearchPattern.R_PATTERN_MATCH);
-			if (pattern != null) {
-				pattern = SearchPattern.createAndPattern(pattern, tokenPattern);
-			} else {
-				pattern = tokenPattern;
-			}
-		}
-
-		// refactor code to avoid this hack.
-		if (pattern == null) {
-			return Stream.empty();
-		}
-
-		final SearchPattern finalPattern = pattern;
-		final int includeMask = searchInMask;
-
-		final Set<IMember> resultAccumerlator = Collections.synchronizedSet(new HashSet<>());
-		final ExecutorService executor = Executors.newSingleThreadExecutor();
 		searchJobTracker.startTracking();
-		cachedSearchParticipant.beforeSearch(expectedTypeFQNs, new String(context.getCoreContext().getToken()));
+		final ExecutorService executor = Executors.newSingleThreadExecutor();
+		final Set<IMember> resultAccumerlator = Collections.synchronizedSet(new HashSet<>());
+		
 		Future<?> task = executor.submit(() -> {
 			try {
+				List<String> expectedTypeFQNs = new ArrayList<>(typeFQNs);
+				if(extendedSearch) {
+					expectedTypeFQNs.addAll(expandSearchTypes(typeFQNs, context, monitor));
+				}
+				
+				SearchPattern pattern = null;
+				int searchInMask = JavaSearchScope.SYSTEM_LIBRARIES | JavaSearchScope.SOURCES;
+
+				final List<String> typeSigs = expectedTypeFQNs.isEmpty() ? Collections.emptyList()
+						: expectedTypeFQNs.stream().map(f -> Signature.createTypeSignature(f, true))
+								.collect(Collectors.toList());
+				if (!expectedTypeFQNs.isEmpty()) {
+					for (String fqn : expectedTypeFQNs) {
+						SearchPattern p = SearchPattern.createPattern(fqn, IJavaSearchConstants.TYPE,
+								IJavaSearchConstants.RETURN_TYPE_REFERENCE,
+								SearchPattern.R_CASE_SENSITIVE | SearchPattern.R_ERASURE_MATCH);
+						pattern = pattern == null ? p : SearchPattern.createOrPattern(p, pattern);
+					}
+				}
+
+				if (extendedSearch) {
+					searchInMask = searchInMask | JavaSearchScope.REFERENCED_PROJECTS | JavaSearchScope.APPLICATION_LIBRARIES;
+				}
+
+				if (context.getCoreContext().getToken() != null && context.getCoreContext().getToken().length > 0) {
+					SearchPattern tokenPattern = SearchPattern.createPattern(
+							new String(context.getCoreContext().getToken()).concat("*"), IJavaSearchConstants.METHOD,
+							IJavaSearchConstants.DECLARATIONS, SearchPattern.R_PATTERN_MATCH);
+					if (pattern != null) {
+						pattern = SearchPattern.createAndPattern(tokenPattern, pattern);
+					} else {
+						pattern = tokenPattern;
+					}
+				}
+
+				// refactor code to avoid this hack.
+				if (pattern == null) {
+					return;
+				}
+
+				final SearchPattern finalPattern = pattern;
+				final int includeMask = searchInMask;
+
+
+				cachedSearchParticipant.beforeSearch(expectedTypeFQNs, new String(context.getCoreContext().getToken()));
+				
 				engine.search(finalPattern, new SearchParticipant[] { cachedSearchParticipant },
 						SearchEngine.createJavaSearchScope(new IJavaElement[] { context.getProject() }, includeMask),
 						new SearchRequestor() {
