@@ -116,11 +116,17 @@ public class StaticMemberFinder {
 				return createStaticFieldProposal((IField) member, context, monitor);
 			} else if (member instanceof IMethod) {
 				return createStaticMethodProposal((IMethod) member, context, monitor);
+			} else if (member instanceof MessageCompletionMember) {
+				return createMessageProposal((MessageCompletionMember) member);
 			}
 		} catch (JavaModelException e) {
 			CorePlugin.getDefault().logError(e.getMessage(), e);
 		}
 		return null;
+	}
+
+	private ICompletionProposal createMessageProposal(MessageCompletionMember member) {
+		return new MessageCompletionProposal(member.getElementName());
 	}
 
 	private ICompletionProposal createStaticFieldProposal(IField field, JavaContentAssistInvocationContext context,
@@ -240,7 +246,6 @@ public class StaticMemberFinder {
 		final SearchJobTracker searchJobTracker = new SearchJobTracker();
 		final SearchEngine engine = new SearchEngine();
 
-		searchJobTracker.startTracking();
 		final ExecutorService executor = Executors.newSingleThreadExecutor();
 		final Set<IMember> resultAccumerlator = Collections.synchronizedSet(new HashSet<>());
 		
@@ -292,6 +297,7 @@ public class StaticMemberFinder {
 
 				cachedSearchParticipant.beforeSearch(expectedTypeFQNs, new String(context.getCoreContext().getToken()));
 				
+				searchJobTracker.startTracking();
 				engine.search(finalPattern, new SearchParticipant[] { cachedSearchParticipant },
 						SearchEngine.createJavaSearchScope(new IJavaElement[] { context.getProject() }, includeMask),
 						new SearchRequestor() {
@@ -323,6 +329,10 @@ public class StaticMemberFinder {
 		} catch (TimeoutException e) {
 			// do nothing since we return what we have collected so far.
 			lastInvocation.reset(); // we don't want a expanded search in next try.
+			if(resultAccumerlator.isEmpty()) {
+				resultAccumerlator.add(new MessageCompletionMember("Searching for static references ⌛"));
+				resultAccumerlator.add(new MessageCompletionMember("Try again after static search finish"));
+			}
 		} catch (Exception e) {
 			CorePlugin.getDefault().logError(e.getMessage(), e);
 		} finally {
