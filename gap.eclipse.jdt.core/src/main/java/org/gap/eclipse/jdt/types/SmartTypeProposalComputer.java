@@ -1,12 +1,16 @@
 package org.gap.eclipse.jdt.types;
 
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.jdt.core.IType;
+import org.eclipse.jdt.core.Signature;
 import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTParser;
@@ -18,7 +22,7 @@ import org.eclipse.jface.text.contentassist.ICompletionProposal;
 import org.eclipse.jface.text.contentassist.IContextInformation;
 import org.gap.eclipse.jdt.CorePlugin;
 
-public class SmartSubTypeProposalComputer extends AbstractSmartProposalComputer
+public class SmartTypeProposalComputer extends AbstractSmartProposalComputer
 		implements IJavaCompletionProposalComputer {
 
 	public static final String CATEGORY_ID = "gap.eclipse.jdt.proposalCategory.smartSubType";
@@ -27,6 +31,8 @@ public class SmartSubTypeProposalComputer extends AbstractSmartProposalComputer
 
 	private final static long TIMEOUT = Long.getLong("org.gap.eclipse.jdt.types.smartSubtypeTimeout", 3000);
 
+	private LastInvocation lastInvocation = new LastInvocation();
+	
 	@Override
 	public void sessionStarted() {
 	}
@@ -45,7 +51,10 @@ public class SmartSubTypeProposalComputer extends AbstractSmartProposalComputer
 				if (isUnsupportedType(expectedType.getFullyQualifiedName())) {
 					return Collections.emptyList();
 				}
-				return completionList(monitor, context, expectedType);
+				final boolean arrayType = Optional.ofNullable(((JavaContentAssistInvocationContext) invocationContext).getCoreContext())
+						.map(c -> Signature.getTypeSignatureKind(c.getExpectedTypesSignatures()[0]) == Signature.ARRAY_TYPE_SIGNATURE)
+						.orElse(false);
+				return completionList(monitor, context, expectedType, lastInvocation.canPerformSecondarySearch(context), arrayType);
 			} else {
 				return searchFromAST((JavaContentAssistInvocationContext) context, monitor);
 			}
@@ -54,16 +63,22 @@ public class SmartSubTypeProposalComputer extends AbstractSmartProposalComputer
 	}
 
 	private List<ICompletionProposal> completionList(IProgressMonitor monitor,
-			JavaContentAssistInvocationContext context, IType expectedType) {
+			JavaContentAssistInvocationContext context, IType expectedType, boolean performSubType, boolean arrayType) {
+		List<ICompletionProposal> result = new ArrayList<ICompletionProposal>();
 		if (isPreceedSpaceNewKeyword(context)) {
-			return subTypeFinder.find(expectedType, context, monitor, Duration.ofMillis(TIMEOUT)).collect(Collectors.toList());
+			if(performSubType) {
+				result.addAll(subTypeFinder.find(expectedType, context, monitor, Duration.ofMillis(TIMEOUT)).collect(Collectors.toList()));
+			}
+			if(arrayType) {
+				result.add(SubTypeFinder.toCompletionProposal(expectedType, context, monitor, arrayType));
+			}
 		}
-		return Collections.emptyList();
+		return result;
 	}
 
 	private List<ICompletionProposal> searchFromAST(JavaContentAssistInvocationContext context,
 			IProgressMonitor monitor) {
-		ASTParser parser = ASTParser.newParser(AST.JLS13);
+		ASTParser parser = ASTParser.newParser(AST.JLS14);
 		parser.setSource(context.getCompilationUnit());
 		parser.setProject(context.getProject());
 		parser.setResolveBindings(true);
@@ -73,9 +88,10 @@ public class SmartSubTypeProposalComputer extends AbstractSmartProposalComputer
 		CompletionASTVistor visitor = new CompletionASTVistor(context);
 		ast.accept(visitor);
 		
-		return visitor.getExpectedTypes().stream()
-			.filter(t -> !isUnsupportedType(t.getFullyQualifiedName()))
-			.flatMap(t -> completionList(monitor, context, t).stream())
+		boolean performSubType = lastInvocation.canPerformSecondarySearch(context);
+		return visitor.getExpectedTypeEntries().stream()
+			.filter(e -> !isUnsupportedType(e.getValue().getFullyQualifiedName()))
+			.flatMap(e -> completionList(monitor, context, e.getValue(), performSubType, e.getKey().isArray()).stream())
 			.collect(Collectors.toList());
 	}
 

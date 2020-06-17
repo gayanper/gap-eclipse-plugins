@@ -1,10 +1,11 @@
 package org.gap.eclipse.jdt.types;
 
+import java.util.AbstractMap;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
+import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
@@ -34,12 +35,11 @@ import com.google.common.collect.Sets;
 
 class CompletionASTVistor extends ASTVisitor {
 	private int offset;
-	private Set<IType> expectedTypes;
-	private Set<ITypeBinding> expectedTypeBindings;
 	private IJavaProject project;
 	private boolean preceedSpace = false;
 	private ASTNode lastFoundNode;
 	private boolean doneProcessing = false;
+	private Set<Entry<ITypeBinding, IType>> typeEntries;
 
 	private CodeRange lastVisited;
 	private Supplier<List<ASTNode>> argumentSupplier;
@@ -52,8 +52,7 @@ class CompletionASTVistor extends ASTVisitor {
 	}
 	public CompletionASTVistor(JavaContentAssistInvocationContext context, boolean searchInOverloadMethods) {
 		this.searchInOverloadMethods = searchInOverloadMethods;
-		this.expectedTypes = new HashSet<>();
-		this.expectedTypeBindings = new HashSet<>();
+		this.typeEntries = new HashSet<>();
 		this.offset = context.getInvocationOffset();
 		this.project = context.getProject();
 		try {
@@ -109,13 +108,12 @@ class CompletionASTVistor extends ASTVisitor {
 		Set<ITypeBinding> typesAtOffset = findParameterTypeAtOffset(getDeclaringType(node));
 		typesAtOffset.stream().map(t -> {
 			try {
-				return project.findType(Signature.getTypeErasure(t.getQualifiedName()));
+				return new AbstractMap.SimpleImmutableEntry<>(t, project.findType(Signature.getTypeErasure(t.getQualifiedName())));
 			} catch (JavaModelException | IllegalArgumentException e) {
 				CorePlugin.getDefault().logError(e.getMessage(), e);
 				return null;
 			}
-		}).filter(Predicates.notNull()).forEach(t -> expectedTypes.add(t));
-		expectedTypeBindings.addAll(typesAtOffset);
+		}).filter(e -> e.getValue() != null).forEach(t -> typeEntries.add(t));
 	}
 
 	private Set<ITypeBinding> findParameterTypeAtOffset(ITypeBinding containerType) {
@@ -214,29 +212,34 @@ class CompletionASTVistor extends ASTVisitor {
 	}
 
 	public Set<IType> getExpectedTypes() {
-		return expectedTypes;
+		return typeEntries.stream().map(Entry::getValue).collect(Collectors.toSet());
 	}
 	
 	public Set<ITypeBinding> getExpectedTypeBindings() {
-		return expectedTypeBindings;
+		return typeEntries.stream().map(Entry::getKey).collect(Collectors.toSet());
 	}
 
 	public IType getExpectedType() {
-		Iterator<IType> iterator = expectedTypes.iterator();
-		if (iterator.hasNext()) {
-			return iterator.next();
+		Optional<Entry<ITypeBinding,IType>> first = typeEntries.stream().findFirst();
+		if (first.isPresent()) {
+			return first.get().getValue();
 		}
 		return null;
 	}
 	
 	public ITypeBinding getExpectedTypeBinding() {
-		Iterator<ITypeBinding> iterator = expectedTypeBindings.iterator();
-		if (iterator.hasNext()) {
-			return iterator.next();
+		Optional<Entry<ITypeBinding,IType>> first = typeEntries.stream().findFirst();
+		if (first.isPresent()) {
+			return first.get().getKey();
 		}
 		return null;
 	}
 
+	
+	public Set<Entry<ITypeBinding, IType>> getExpectedTypeEntries() {
+		return typeEntries;
+	}
+	
 	public boolean isNonGenericEqual(ITypeBinding left, ITypeBinding right) {
 		 String leftName = Optional.ofNullable(left).map(ITypeBinding::getQualifiedName).map(this::genericErasure).orElse("");
 		 String rightName = Optional.ofNullable(right).map(ITypeBinding::getQualifiedName).map(this::genericErasure).orElse("");

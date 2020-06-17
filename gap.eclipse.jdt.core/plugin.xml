@@ -93,8 +93,8 @@
          point="org.eclipse.jdt.ui.javaCompletionProposalComputer">
 		<javaCompletionProposalComputer
         activate="false"
-        categoryId="gap.eclipse.jdt.core.smartSubType"
-        class="org.gap.eclipse.jdt.types.SmartSubTypeProposalComputer"
+        categoryId="gap.eclipse.jdt.core.smartType"
+        class="org.gap.eclipse.jdt.types.SmartTypeProposalComputer"
         requiresUIThread="false">
 		 </javaCompletionProposalComputer>
    </extension>
@@ -158,8 +158,8 @@
       </proposalCategory>
    </extension>
    <extension
-         id="smartSubType"
-         name="Smart SubType Completion"
+         id="smartType"
+         name="Smart Type Completion"
          point="org.eclipse.jdt.ui.javaCompletionProposalComputer">
       <proposalCategory
             icon="icons/view16/sessionprocessor_types.png">

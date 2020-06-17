@@ -43,11 +43,11 @@ public class SubTypeFinder {
 					}
 					return false;
 				})
-				.map(m -> toCompletionProposal(m, context, monitor)).filter(Predicates.notNull());
+				.map(m -> toCompletionProposal(m, context, monitor, false)).filter(Predicates.notNull());
 	}
 
-	private ICompletionProposal toCompletionProposal(IType type, JavaContentAssistInvocationContext context,
-			IProgressMonitor monitor) {
+	public static ICompletionProposal toCompletionProposal(IType type, JavaContentAssistInvocationContext context,
+			IProgressMonitor monitor, boolean array) {
 		try {
 			CompletionProposal proposal = CompletionProposal.create(CompletionProposal.TYPE_REF,
 					context.getInvocationOffset());
@@ -60,6 +60,10 @@ public class SubTypeFinder {
 			proposal.setReplaceRange(context.getInvocationOffset(), ContextUtils.computeEndOffset(context));
 			proposal.setSignature(Signature.createTypeSignature(fullyQualifiedName, true).toCharArray());
 
+			if(array) {
+				return new LazyArrayJavaTypeProposal(proposal, context);
+			}
+			
 			if (supportGenerics(context.getProject())) {
 				return new LazyGenericTypeProposal(proposal, context);
 			} else {
@@ -71,7 +75,7 @@ public class SubTypeFinder {
 		return null;
 	}
 
-	private boolean supportGenerics(IJavaProject project) {
+	private static boolean supportGenerics(IJavaProject project) {
 		String source = project.getOption(JavaCore.COMPILER_SOURCE, true);
 		return source != null && JavaCore.compareJavaVersions(JavaCore.VERSION_1_5, source) <= 0;
 	}
