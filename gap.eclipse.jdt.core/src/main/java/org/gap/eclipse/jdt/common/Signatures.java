@@ -69,13 +69,15 @@ public final class Signatures {
 	
 	public static boolean isNoOfTypeParametersEqual(String sigLeft, String sigRight) {
 		int leftStartIndex = sigLeft.indexOf('<');
+		String leftSep = sigLeft.indexOf(";") > -1 ? ";" : ",";
 		String leftParamSection = leftStartIndex > -1 ? sigLeft.substring(leftStartIndex + 1, sigLeft.indexOf('>')) : null;
 		
 		int rightStartIndex = sigRight.indexOf('<');
+		String rightSep = sigRight.indexOf(";") > -1 ? ";" : ",";
 		String rightParamSection = rightStartIndex > -1 ? sigRight.substring(rightStartIndex + 1, sigRight.indexOf('>')) : null;
 		
-		String[] leftArguments = leftParamSection != null ? leftParamSection.split(",") : new String[0];
-		String[] rightArguments = rightParamSection != null ? rightParamSection.split(","): new String[0];
+		String[] leftArguments = leftParamSection != null ? leftParamSection.split(leftSep) : new String[0];
+		String[] rightArguments = rightParamSection != null ? rightParamSection.split(rightSep): new String[0];
 		return leftArguments.length == rightArguments.length;
 	}
 }

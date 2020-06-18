@@ -73,28 +73,8 @@ public class StaticMemberFinder {
 		return expectedTypeFQNs.stream().parallel().flatMap(type -> {
 			try {
 				IType foundType = project.findType(Signature.getTypeErasure(type), monitor);
-				if (foundType != null) {
-					List<IType> types = new ArrayList<>();
-					SearchPattern pattern = SearchPattern.createPattern(foundType, IJavaSearchConstants.IMPLEMENTORS);
-					SearchEngine engine = new SearchEngine();
-					engine.search(pattern, new SearchParticipant[] { SearchEngine.getDefaultSearchParticipant() },
-							SearchEngine.createJavaSearchScope(new IJavaElement[] { context.getProject() }),
-							new SearchRequestor() {
-
-								@Override
-								public void acceptSearchMatch(SearchMatch match) throws CoreException {
-									if (match.getAccuracy() == SearchMatch.A_ACCURATE
-											&& match.getElement() instanceof IType) {
-										IType iType = (IType) match.getElement();
-										if (Signatures.isNoOfTypeParametersEqual(iType.getKey(),
-												type)) {
-											types.add(iType);
-										}
-									}
-								}
-							}, monitor);
-					return types.stream();
-				}
+				return Stream.of(foundType.newTypeHierarchy(project, monitor).getAllSubtypes(foundType))
+						.filter(t -> Signatures.isNoOfTypeParametersEqual(t.getKey(),type));
 			} catch (CoreException e) {
 				CorePlugin.getDefault().logError(e.getMessage(), e);
 			}
