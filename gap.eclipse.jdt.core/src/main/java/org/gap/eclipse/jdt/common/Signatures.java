@@ -1,6 +1,9 @@
 package org.gap.eclipse.jdt.common;
 
+import java.util.stream.Stream;
+
 import org.eclipse.jdt.core.IMethod;
+import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.Signature;
 
@@ -67,17 +70,22 @@ public final class Signatures {
 		return returnType.replace('$', '.');
 	}
 	
-	public static boolean isNoOfTypeParametersEqual(String sigLeft, String sigRight) {
-		int leftStartIndex = sigLeft.indexOf('<');
-		String leftSep = sigLeft.indexOf(";") > -1 ? ";" : ",";
-		String leftParamSection = leftStartIndex > -1 ? sigLeft.substring(leftStartIndex + 1, sigLeft.indexOf('>')) : null;
-		
-		int rightStartIndex = sigRight.indexOf('<');
-		String rightSep = sigRight.indexOf(";") > -1 ? ";" : ",";
-		String rightParamSection = rightStartIndex > -1 ? sigRight.substring(rightStartIndex + 1, sigRight.indexOf('>')) : null;
-		
-		String[] leftArguments = leftParamSection != null ? leftParamSection.split(leftSep) : new String[0];
-		String[] rightArguments = rightParamSection != null ? rightParamSection.split(rightSep): new String[0];
-		return leftArguments.length == rightArguments.length;
+	public static boolean isNoOfTypeParametersEqual(IType t, String sigRight) {
+		try {
+			// E:Ljava.lang.Object; for <E>. improve later for exact matches
+			String[] leftArguments = t.getTypeParameterSignatures();
+			if(!Stream.of(leftArguments).allMatch(s -> s.endsWith("Ljava.lang.Object;"))) {
+				return false;
+			}
+			
+			int rightStartIndex = sigRight.indexOf('<');
+			String rightSep = sigRight.indexOf(";") > -1 ? ";" : ",";
+			String rightParamSection = rightStartIndex > -1 ? sigRight.substring(rightStartIndex + 1, sigRight.indexOf('>')) : null;
+			
+			String[] rightArguments = rightParamSection != null ? rightParamSection.split(rightSep): new String[0];
+			return leftArguments.length == rightArguments.length;
+		} catch (JavaModelException e) {
+			return false;
+		}
 	}
 }

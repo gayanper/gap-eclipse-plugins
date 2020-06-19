@@ -74,7 +74,7 @@ public class StaticMemberFinder {
 			try {
 				IType foundType = project.findType(Signature.getTypeErasure(type), monitor);
 				return Stream.of(foundType.newTypeHierarchy(project, monitor).getAllSubtypes(foundType))
-						.filter(t -> Signatures.isNoOfTypeParametersEqual(t.getKey(),type));
+						.filter(t -> Signatures.isNoOfTypeParametersEqual(t,type));
 			} catch (CoreException e) {
 				CorePlugin.getDefault().logError(e.getMessage(), e);
 			}
@@ -247,7 +247,9 @@ public class StaticMemberFinder {
 						SearchPattern p = SearchPattern.createPattern(fqn, IJavaSearchConstants.TYPE,
 								IJavaSearchConstants.RETURN_TYPE_REFERENCE,
 								SearchPattern.R_CASE_SENSITIVE | SearchPattern.R_ERASURE_MATCH);
-						pattern = pattern == null ? p : SearchPattern.createOrPattern(p, pattern);
+						if(p != null) {
+							pattern = pattern == null ? p : SearchPattern.createOrPattern(p, pattern);
+						}
 					}
 				}
 

@@ -1,6 +1,8 @@
 package org.gap.eclipse.jdt.types;
 
 import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.function.Predicate;
 
 import org.eclipse.core.runtime.CoreException;
@@ -35,9 +37,17 @@ public class FilteredSearchParticipant extends SearchParticipant {
 	@Override
 	public void locateMatches(SearchDocument[] documents, SearchPattern pattern, IJavaSearchScope scope,
 			SearchRequestor requestor, IProgressMonitor monitor) throws CoreException {
-		SearchDocument[] filtered = Arrays.stream(documents).filter(searchInDocuments())
-				.toArray(s -> new SearchDocument[s]);
-		participant.locateMatches(filtered, pattern, scope, requestor, monitor);
+		List<SearchDocument> prioDocuments = new LinkedList<SearchDocument>();
+		Arrays.stream(documents).filter(searchInDocuments())
+			.forEach(d -> {
+				if(d.getPath().contains("|java/util") || d.getPath().contains("|java/util/stream") ||
+						d.getPath().contains("|com/google/common/collect")) {
+					prioDocuments.add(0, d);
+				} else {
+					prioDocuments.add(d);
+				}
+			});
+		participant.locateMatches(prioDocuments.toArray(new SearchDocument[0]), pattern, scope, requestor, monitor);
 	}
 
 	private Predicate<SearchDocument> searchInDocuments() {
