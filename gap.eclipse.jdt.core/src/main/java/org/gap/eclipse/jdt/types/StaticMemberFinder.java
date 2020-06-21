@@ -54,6 +54,7 @@ public class StaticMemberFinder {
 			JavaContentAssistInvocationContext context, IProgressMonitor monitor, Duration timeout) {
 		boolean extendedSearch = context.getCoreContext().getToken() != null
 				&& context.getCoreContext().getToken().length > 0;
+		boolean expandSubTypes = false;		
 	
 		if (lastInvocation.canPerformSecondarySearch(context)) {
 			if(!lastInvocation.wasLastSecondarySearch()) {
@@ -61,9 +62,10 @@ public class StaticMemberFinder {
 			}
 			
 			extendedSearch = true;
+			expandSubTypes = true;
 		}
 	
-		return performSearch(expectedTypeFQNs, context, monitor, timeout, extendedSearch)
+		return performSearch(expectedTypeFQNs, context, monitor, timeout, extendedSearch, expandSubTypes)
 				.map(m -> toCompletionProposal(m, context, monitor)).filter(Predicates.notNull());
 	}
 
@@ -222,7 +224,7 @@ public class StaticMemberFinder {
 
 	@SuppressWarnings("deprecation")
 	private Stream<IMember> performSearch(List<String> typeFQNs, JavaContentAssistInvocationContext context,
-			IProgressMonitor monitor, Duration timeout, boolean extendedSearch) {
+			IProgressMonitor monitor, Duration timeout, boolean extendedSearch, boolean expandSubTypes) {
 		final SearchJobTracker searchJobTracker = new SearchJobTracker();
 		final SearchEngine engine = new SearchEngine();
 
@@ -232,7 +234,7 @@ public class StaticMemberFinder {
 		Future<?> task = executor.submit(() -> {
 			try {
 				List<String> expectedTypeFQNs = new ArrayList<>(typeFQNs);
-				if(extendedSearch) {
+				if(expandSubTypes) {
 					expectedTypeFQNs.addAll(expandSearchTypes(typeFQNs, context, monitor));
 				}
 				
