@@ -1,5 +1,7 @@
 package org.gap.eclipse.jdt.common;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.stream.Stream;
 
 import org.eclipse.jdt.core.IMethod;
@@ -78,14 +80,53 @@ public final class Signatures {
 				return false;
 			}
 			
-			int rightStartIndex = sigRight.indexOf('<');
-			String rightSep = sigRight.indexOf(";") > -1 ? ";" : ",";
-			String rightParamSection = rightStartIndex > -1 ? sigRight.substring(rightStartIndex + 1, sigRight.indexOf('>')) : null;
-			
-			String[] rightArguments = rightParamSection != null ? rightParamSection.split(rightSep): new String[0];
-			return leftArguments.length == rightArguments.length;
+			List<String> rightArguments = getTypeParametersFromTypeSignature(sigRight);	
+			return leftArguments.length == rightArguments.size();
 		} catch (JavaModelException e) {
 			return false;
 		}
+	}
+	
+	static List<String> getTypeParametersFromTypeSignature(String typeSignature) {
+		char[] chars = typeSignature.toCharArray();
+		List<String> parameters = new ArrayList<>();
+		
+		StringBuilder builder = new StringBuilder();
+		boolean skipChars = true;
+		int ltCount = 0;
+		
+		for (int i = 0; i < chars.length; i++) {
+			if(chars[i] == '<') {
+				if(ltCount == 0) {
+					skipChars = false;
+					ltCount++;
+					continue;
+				}
+				ltCount++;
+			}
+			
+			if(chars[i] == '>') {
+				if(ltCount == 1) {
+					parameters.add(builder.toString());
+					skipChars = true;
+					ltCount--;
+					continue;
+				}
+				ltCount--;
+			}
+			
+			if(chars[i] == ',' && ltCount == 1) {
+				parameters.add(builder.toString());
+				builder = new StringBuilder();
+				continue;
+			}
+			
+			if(skipChars) {
+				continue;
+			}
+			builder.append(chars[i]);
+		}
+		
+		return parameters;
 	}
 }
