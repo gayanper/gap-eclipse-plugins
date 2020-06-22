@@ -317,6 +317,9 @@ public class StaticMemberFinder {
 				resultAccumerlator.add(new MessageCompletionMember("Searching for static references ⌛"));
 				resultAccumerlator.add(new MessageCompletionMember("Try again after static search finish"));
 			}
+		} catch (InterruptedException e) {
+			CorePlugin.getDefault().logError(e.getMessage(), e);
+			Thread.currentThread().interrupt();
 		} catch (Exception e) {
 			CorePlugin.getDefault().logError(e.getMessage(), e);
 		} finally {

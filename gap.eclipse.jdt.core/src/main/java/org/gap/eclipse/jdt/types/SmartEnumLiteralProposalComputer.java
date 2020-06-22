@@ -3,8 +3,14 @@ package org.gap.eclipse.jdt.types;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -42,6 +48,8 @@ public class SmartEnumLiteralProposalComputer extends AbstractSmartProposalCompu
 	public static final String CATEGORY_ID = "gap.eclipse.jdt.proposalCategory.smartEnum";
 
 	private final LastInvocation lastInvocation = new LastInvocation();
+
+	private final static long TIMEOUT = Long.getLong("org.gap.eclipse.jdt.types.smartSearchTimeout", 4000);
 
 	@Override
 	public void sessionStarted() {
@@ -92,20 +100,41 @@ public class SmartEnumLiteralProposalComputer extends AbstractSmartProposalCompu
 			.flatMap(t -> {
 					try {
 						if(t.isInterface() && lastInvocation.canPerformSecondarySearch(context)) {
-							List<IType> types = new ArrayList<>();
-							SearchPattern pattern = SearchPattern.createPattern(t, IJavaSearchConstants.IMPLEMENTORS);
-							SearchEngine engine = new SearchEngine();
-							engine.search(pattern, new SearchParticipant[] { SearchEngine.getDefaultSearchParticipant()}, 
-									SearchEngine.createJavaSearchScope(new IJavaElement[] { context.getProject() }), new SearchRequestor() {
+							ExecutorService executor = Executors.newSingleThreadExecutor();
+							final Set<IType> types = Collections.synchronizedSet(new HashSet<>());
+							
+							Future<?> future = executor.submit(() -> {
+								SearchPattern pattern = SearchPattern.createPattern(t, IJavaSearchConstants.IMPLEMENTORS);
+								SearchEngine engine = new SearchEngine();
+								try {
+									engine.search(pattern, new SearchParticipant[] { SearchEngine.getDefaultSearchParticipant()}, 
+											SearchEngine.createJavaSearchScope(new IJavaElement[] { context.getProject() }), new SearchRequestor() {
 
-										@Override
-										public void acceptSearchMatch(SearchMatch match) throws CoreException {
-											if(match.getAccuracy() == SearchMatch.A_ACCURATE &&
-													match.getElement() instanceof IType) {
-												types.add((IType) match.getElement());
-											}
-										}
-							}, monitor);
+												@Override
+												public void acceptSearchMatch(SearchMatch match) throws CoreException {
+													if(match.getAccuracy() == SearchMatch.A_ACCURATE &&
+															match.getElement() instanceof IType) {
+														types.add((IType) match.getElement());
+													}
+												}
+									}, monitor);
+								} catch (CoreException e) {
+									CorePlugin.getDefault().logError(e.getMessage(), e);
+								}
+							});
+							
+							try {
+								future.get(TIMEOUT, TimeUnit.SECONDS);
+							} catch (TimeoutException e) {
+								lastInvocation.reset(); // we don't want a expanded search in next try.
+							} catch (InterruptedException e) {
+								CorePlugin.getDefault().logError(e.getMessage(), e);
+								Thread.currentThread().interrupt();
+							} catch (Exception e) {
+								CorePlugin.getDefault().logError(e.getMessage(), e);
+							} finally {
+								executor.shutdown();
+							}
 							return types.stream();
 						} else {
 							return Stream.of(t);
