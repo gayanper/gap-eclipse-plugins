@@ -8,7 +8,9 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
+import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IMember;
+import org.eclipse.jdt.core.IPackageFragmentRoot;
 import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.search.IJavaSearchConstants;
 import org.eclipse.jdt.core.search.IJavaSearchScope;
@@ -23,6 +25,7 @@ import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.dialogs.IDialogSettings;
 import org.eclipse.jface.util.IPropertyChangeListener;
 import org.eclipse.jface.util.PropertyChangeEvent;
+import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Shell;
@@ -41,6 +44,22 @@ public class OpenSymbolDialog extends FilteredItemsSelectionDialog {
 	public OpenSymbolDialog(Shell shell) {
 		super(shell);
 		setListLabelProvider(new SymbolLabelProvider());
+		setDetailsLabelProvider(new LabelProvider() {
+			@Override
+			public String getText(Object element) {
+				if(element instanceof IMember) {
+					IType type = ((IMember) element).getDeclaringType();
+					StringBuilder result= new StringBuilder();
+					String containerName= type.getFullyQualifiedName('.');
+					result.append(containerName);
+					result.append(JavaElementLabels.CONCAT_STRING);
+					result.append(((IPackageFragmentRoot) type.getAncestor(IJavaElement.PACKAGE_FRAGMENT_ROOT)).getElementName());
+					return result.toString();
+				}
+				return super.getText(element);
+			}
+			
+		});
 	}
 
 	@Override
@@ -104,6 +123,10 @@ public class OpenSymbolDialog extends FilteredItemsSelectionDialog {
 		String memberName;
 
 		final String pattern = filter.getPattern();
+		if(pattern.startsWith(".")) {
+			return;
+		}
+		
 		if (isQualifiedPattern(pattern)) {
 			final String parentType = pattern.substring(0, pattern.lastIndexOf('.')).replace('$', '.');
 			IType type = searchForType(parentType, monitor);
@@ -124,8 +147,14 @@ public class OpenSymbolDialog extends FilteredItemsSelectionDialog {
 			} else {
 				scope = JavaSearchScopeFactory.getInstance().createJavaSearchScope(filter.getWorkingSet(), true);
 			}
-			memberName = pattern;
-			filter.setFullyQualifiedSearch(false);
+			
+			if(isRegex(pattern)) {
+				memberName = pattern.substring(pattern.lastIndexOf('.') + 1);
+				filter.setFullyQualifiedSearch(true);
+			} else {
+				memberName = pattern;
+				filter.setFullyQualifiedSearch(false);
+			}
 		}
 
 		SearchPattern methodPattern = SearchPattern.createPattern(memberName, IJavaSearchConstants.METHOD,
@@ -158,7 +187,11 @@ public class OpenSymbolDialog extends FilteredItemsSelectionDialog {
 	}
 
 	private boolean isQualifiedPattern(String pattern) {
-		return pattern.contains(".");
+		return pattern.contains(".") && !isRegex(pattern);
+	}
+
+	private boolean isRegex(String pattern) {
+		return pattern.contains("*");
 	}
 
 	@Override
@@ -184,7 +217,7 @@ public class OpenSymbolDialog extends FilteredItemsSelectionDialog {
 		public void acceptSearchMatch(SearchMatch match) throws CoreException {
 			contentProvider.add(match.getElement(), itemsFilter);
 		}
-
+		
 		@Override
 		public void beginReporting() {
 			methodsFound = false;
