@@ -36,12 +36,17 @@ public class AbstractSmartProposalComputer {
 	}
 	
 	protected final boolean shouldCompute(ContentAssistInvocationContext context) {
-		try {
-			return !".".equals(context.getDocument().get(context.getInvocationOffset() - 1, 1));
-		} catch (BadLocationException e) {
-			CorePlugin.getDefault().logError(e.getMessage(), e);
-			return false;
+		if(context instanceof JavaContentAssistInvocationContext) {
+			JavaContentAssistInvocationContext jcontext = (JavaContentAssistInvocationContext) context;
+			try {
+				return !".".equals(jcontext.getDocument().get(context.getInvocationOffset() - 1, 1)) &&
+						jcontext.getCoreContext().getTokenStart() > 0 &&
+						!".".equals(jcontext.getDocument().get(jcontext.getCoreContext().getTokenStart() - 1, 1));
+			} catch (BadLocationException e) {
+				CorePlugin.getDefault().logError(e.getMessage(), e);
+			}
 		}
+		return false;
 	}
 	
 	protected final boolean isUnsupportedType(String fqn) {
