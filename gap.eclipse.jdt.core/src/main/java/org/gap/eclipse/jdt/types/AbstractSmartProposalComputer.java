@@ -2,6 +2,7 @@ package org.gap.eclipse.jdt.types;
 
 import java.util.Set;
 
+import org.eclipse.core.runtime.Platform;
 import org.eclipse.jdt.core.CompletionProposal;
 import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.JavaModelException;
@@ -10,16 +11,28 @@ import org.eclipse.jdt.ui.text.java.ContentAssistInvocationContext;
 import org.eclipse.jdt.ui.text.java.JavaContentAssistInvocationContext;
 import org.eclipse.jface.text.BadLocationException;
 import org.gap.eclipse.jdt.CorePlugin;
+import org.osgi.framework.Version;
 
 import com.google.common.collect.Sets;
 
 public class AbstractSmartProposalComputer {
 
+	protected static final long TIMEOUT = Long.getLong("org.gap.eclipse.jdt.types.smartSearchTimeout", defaultTimeout());
 	private Set<String> unsupportedTypes = Sets.newHashSet("java.lang.String", "java.lang.Object",
 			"java.lang.Cloneable", "java.lang.Throwable", "java.lang.Exception");
 
 	public AbstractSmartProposalComputer() {
 		super();
+	}
+
+	private static long defaultTimeout() {
+		Version version = Platform.getProduct().getDefiningBundle().getVersion();
+		
+		if((version.getMajor() == 4) && (version.getMinor() > 16) ||
+				version.getMajor() > 4) {
+			return 10000;
+		}
+		return 4000;
 	}
 
 	protected final CompletionProposal createImportProposal(JavaContentAssistInvocationContext context, IType type)

@@ -49,8 +49,6 @@ public class SmartEnumLiteralProposalComputer extends AbstractSmartProposalCompu
 
 	private final LastInvocation lastInvocation = new LastInvocation();
 
-	private final static long TIMEOUT = Long.getLong("org.gap.eclipse.jdt.types.smartSearchTimeout", 4000);
-
 	@Override
 	public void sessionStarted() {
 	}
