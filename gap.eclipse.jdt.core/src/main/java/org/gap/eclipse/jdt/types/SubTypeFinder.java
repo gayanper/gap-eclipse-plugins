@@ -95,7 +95,11 @@ public class SubTypeFinder {
 		});
 
 		try {
-			task.get(timeout.getSeconds(), TimeUnit.SECONDS);
+			if (timeout != null) {
+				task.get(timeout.getSeconds(), TimeUnit.SECONDS);
+			} else {
+				task.get();
+			}
 		} catch (TimeoutException e) {
 			// do nothing since we return what we have collected so far.
 		} catch (Exception e) {

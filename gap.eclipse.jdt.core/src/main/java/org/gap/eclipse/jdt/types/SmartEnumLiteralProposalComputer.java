@@ -122,7 +122,11 @@ public class SmartEnumLiteralProposalComputer extends AbstractSmartProposalCompu
 							});
 							
 							try {
-								future.get(TIMEOUT, TimeUnit.SECONDS);
+								if (isAsyncCompletionActive(context)) {
+									future.get();
+								} else {
+									future.get(TIMEOUT, TimeUnit.SECONDS);
+								}
 							} catch (TimeoutException e) {
 								lastInvocation.reset(); // we don't want a expanded search in next try.
 							} catch (InterruptedException e) {

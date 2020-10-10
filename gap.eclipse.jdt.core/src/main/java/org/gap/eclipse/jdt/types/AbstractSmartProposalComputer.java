@@ -7,6 +7,7 @@ import org.eclipse.jdt.core.CompletionProposal;
 import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.Signature;
+import org.eclipse.jdt.internal.ui.javaeditor.JavaSourceViewer;
 import org.eclipse.jdt.ui.text.java.ContentAssistInvocationContext;
 import org.eclipse.jdt.ui.text.java.JavaContentAssistInvocationContext;
 import org.eclipse.jface.text.BadLocationException;
@@ -71,5 +72,13 @@ public class AbstractSmartProposalComputer {
 		final String qualifier = Signature.getSignatureQualifier(sig);
 		final String name = Signature.getSignatureSimpleName(sig);
 		return qualifier.concat(".").concat(name);
+	}
+	
+	@SuppressWarnings("restriction")
+	protected final boolean isAsyncCompletionActive(JavaContentAssistInvocationContext context) {
+		if (context.getViewer() instanceof JavaSourceViewer) {
+			return ((JavaSourceViewer) context.getViewer()).isAsyncCompletionActive();
+		}
+		return false;
 	}
 }

@@ -309,7 +309,11 @@ public class StaticMemberFinder {
 		});
 
 		try {
-			task.get(timeout.getSeconds(), TimeUnit.SECONDS);
+			if (timeout != null) {
+				task.get(timeout.getSeconds(), TimeUnit.SECONDS);
+			} else {
+				task.get();
+			}
 		} catch (TimeoutException e) {
 			// do nothing since we return what we have collected so far.
 			lastInvocation.reset(); // we don't want a expanded search in next try.

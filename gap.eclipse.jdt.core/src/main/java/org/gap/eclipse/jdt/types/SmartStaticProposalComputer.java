@@ -67,7 +67,7 @@ public class SmartStaticProposalComputer extends AbstractSmartProposalComputer i
 
 	private List<ICompletionProposal> completionList(IProgressMonitor monitor,
 			JavaContentAssistInvocationContext context, List<String> typeNames) {
-		final Duration blockDuration = Duration.ofMillis(TIMEOUT);
+		final Duration blockDuration = isAsyncCompletionActive(context) ? null : Duration.ofMillis(TIMEOUT);
 		if (!isPreceedSpaceNewKeyword(context)) {
 			return staticMemberFinder.find(typeNames, context, monitor, blockDuration).collect(Collectors.toList());
 		}

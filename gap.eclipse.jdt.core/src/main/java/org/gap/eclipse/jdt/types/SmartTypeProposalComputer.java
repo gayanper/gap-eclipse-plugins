@@ -67,7 +67,8 @@ public class SmartTypeProposalComputer extends AbstractSmartProposalComputer
 		List<ICompletionProposal> result = new ArrayList<ICompletionProposal>();
 		if (isPreceedSpaceNewKeyword(context)) {
 			if(performSubType) {
-				result.addAll(subTypeFinder.find(expectedType, context, monitor, Duration.ofMillis(TIMEOUT)).collect(Collectors.toList()));
+				Duration timeout = isAsyncCompletionActive(context) ? null : Duration.ofMillis(TIMEOUT);
+				result.addAll(subTypeFinder.find(expectedType, context, monitor, timeout).collect(Collectors.toList()));
 			}
 			if(arrayType) {
 				result.add(SubTypeFinder.toCompletionProposal(expectedType, context, monitor, arrayType));
