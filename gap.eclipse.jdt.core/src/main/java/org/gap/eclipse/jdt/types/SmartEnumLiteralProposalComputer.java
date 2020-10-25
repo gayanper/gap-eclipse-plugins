@@ -62,20 +62,7 @@ public class SmartEnumLiteralProposalComputer extends AbstractSmartProposalCompu
 		
 		if (invocationContext instanceof JavaContentAssistInvocationContext) {
 			JavaContentAssistInvocationContext context = (JavaContentAssistInvocationContext) invocationContext;
-			if (context.getExpectedType() != null) {
-				IType expectedType = context.getExpectedType();
-				if (isUnsupportedType(expectedType.getFullyQualifiedName())) {
-					return Collections.emptyList();
-				}
-
-				try {
-					if (expectedType.isEnum()) {
-						return createEnumProposals(context, expectedType);
-					}
-				} catch (JavaModelException e) {
-					CorePlugin.getDefault().logError(e.getMessage(), e);
-				}
-			} else {
+			if (context.getExpectedType() == null) {
 				return searchFromAST((JavaContentAssistInvocationContext) context, monitor);
 			}
 		}
