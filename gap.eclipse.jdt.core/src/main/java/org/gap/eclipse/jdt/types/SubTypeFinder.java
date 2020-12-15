@@ -43,11 +43,11 @@ public class SubTypeFinder {
 					}
 					return false;
 				})
-				.map(m -> toCompletionProposal(m, context, monitor, false)).filter(Predicates.notNull());
+				.map(m -> toCompletionProposal(m, context, monitor, false, false)).filter(Predicates.notNull());
 	}
 
 	public static ICompletionProposal toCompletionProposal(IType type, JavaContentAssistInvocationContext context,
-			IProgressMonitor monitor, boolean array) {
+			IProgressMonitor monitor, boolean array, boolean initialize) {
 		try {
 			CompletionProposal proposal = CompletionProposal.create(CompletionProposal.TYPE_REF,
 					context.getInvocationOffset());
@@ -61,7 +61,7 @@ public class SubTypeFinder {
 			proposal.setSignature(Signature.createTypeSignature(fullyQualifiedName, true).toCharArray());
 
 			if(array) {
-				return new LazyArrayJavaTypeProposal(proposal, context);
+				return new LazyArrayJavaTypeProposal(proposal, context, initialize);
 			}
 			
 			if (supportGenerics(context.getProject())) {

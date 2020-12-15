@@ -48,12 +48,13 @@ public class SmartTypeProposalComputer extends AbstractSmartProposalComputer
 			JavaContentAssistInvocationContext context = (JavaContentAssistInvocationContext) invocationContext;
 			if (context.getExpectedType() != null) {
 				IType expectedType = context.getExpectedType();
-				if (isUnsupportedType(expectedType.getFullyQualifiedName())) {
-					return Collections.emptyList();
-				}
 				final boolean arrayType = Optional.ofNullable(((JavaContentAssistInvocationContext) invocationContext).getCoreContext())
 						.map(c -> Signature.getTypeSignatureKind(c.getExpectedTypesSignatures()[0]) == Signature.ARRAY_TYPE_SIGNATURE)
 						.orElse(false);
+
+				if (isUnsupportedType(expectedType.getFullyQualifiedName()) && !arrayType) {
+					return Collections.emptyList();
+				}
 				return completionList(monitor, context, expectedType, lastInvocation.canPerformSecondarySearch(context), arrayType);
 			} else {
 				return searchFromAST((JavaContentAssistInvocationContext) context, monitor);
@@ -71,7 +72,8 @@ public class SmartTypeProposalComputer extends AbstractSmartProposalComputer
 				result.addAll(subTypeFinder.find(expectedType, context, monitor, timeout).collect(Collectors.toList()));
 			}
 			if(arrayType) {
-				result.add(SubTypeFinder.toCompletionProposal(expectedType, context, monitor, arrayType));
+				result.add(SubTypeFinder.toCompletionProposal(expectedType, context, monitor, arrayType, false));
+				result.add(SubTypeFinder.toCompletionProposal(expectedType, context, monitor, arrayType, true));
 			}
 		}
 		return result;
@@ -91,7 +93,7 @@ public class SmartTypeProposalComputer extends AbstractSmartProposalComputer
 		
 		boolean performSubType = lastInvocation.canPerformSecondarySearch(context);
 		return visitor.getExpectedTypeEntries().stream()
-			.filter(e -> !isUnsupportedType(e.getValue().getFullyQualifiedName()))
+				.filter(e -> !isUnsupportedType(e.getValue().getFullyQualifiedName()) || e.getKey().isArray())
 			.flatMap(e -> completionList(monitor, context, e.getValue(), performSubType, e.getKey().isArray()).stream())
 			.collect(Collectors.toList());
 	}

@@ -9,9 +9,15 @@ import org.eclipse.jface.viewers.StyledString;
 
 @SuppressWarnings("restriction")
 public class LazyArrayJavaTypeProposal extends LazyJavaTypeCompletionProposal {
+	private final boolean initialize;
+	private final char cursorChar, linkChar;
 
-	public LazyArrayJavaTypeProposal(CompletionProposal proposal, JavaContentAssistInvocationContext context) {
+	public LazyArrayJavaTypeProposal(CompletionProposal proposal, JavaContentAssistInvocationContext context,
+			boolean initialize) {
 		super(proposal, context);
+		this.initialize = initialize;
+		this.cursorChar = initialize ? '{' : '[';
+		this.linkChar = initialize ? '}' : ']';
 	}
 
 	@Override
@@ -23,6 +29,13 @@ public class LazyArrayJavaTypeProposal extends LazyJavaTypeCompletionProposal {
 		styledString.setStyle(offset, 2, null);
 		styledString.insert('[', offset++);
 		styledString.insert(']', offset++);
+
+		if (this.initialize) {
+			styledString.setStyle(offset, 2, StyledString.COUNTER_STYLER);
+			styledString.insert('{', offset++);
+			styledString.insert('}', offset++);
+		}
+
 		styledString.setStyle(offset, styledString.length() - offset, StyledString.QUALIFIER_STYLER);
 		return styledString;
 	}
@@ -31,17 +44,20 @@ public class LazyArrayJavaTypeProposal extends LazyJavaTypeCompletionProposal {
 	protected String computeReplacementString() {
 		final StringBuilder replacementString = new StringBuilder(super.computeReplacementString());
 		replacementString.append("[]");
+		if (this.initialize) {
+			replacementString.append("{}");
+		}
 		return replacementString.toString();
 	}
 	
 	@Override
 	protected int computeCursorPosition() {
-		return getReplacementString().indexOf('[') + 1;
+		return getReplacementString().indexOf(cursorChar) + 1;
 	}
 	
 	@Override
 	public void apply(IDocument document, char trigger, int offset) {
 		super.apply(document, trigger, offset);
-		setUpLinkedMode(document, ']');
+		setUpLinkedMode(document, linkChar);
 	}
 }
