@@ -1,22 +1,31 @@
 package org.gap.eclipse.jdt.types;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 
+import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.jdt.core.CompletionProposal;
 import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.Signature;
+import org.eclipse.jdt.core.dom.AST;
+import org.eclipse.jdt.core.dom.ASTNode;
+import org.eclipse.jdt.core.dom.ASTParser;
 import org.eclipse.jdt.internal.ui.javaeditor.JavaSourceViewer;
 import org.eclipse.jdt.ui.text.java.ContentAssistInvocationContext;
+import org.eclipse.jdt.ui.text.java.IJavaCompletionProposalComputer;
 import org.eclipse.jdt.ui.text.java.JavaContentAssistInvocationContext;
 import org.eclipse.jface.text.BadLocationException;
+import org.eclipse.jface.text.contentassist.ICompletionProposal;
+import org.eclipse.jface.text.contentassist.IContextInformation;
 import org.gap.eclipse.jdt.CorePlugin;
 import org.osgi.framework.Version;
 
 import com.google.common.collect.Sets;
 
-public class AbstractSmartProposalComputer {
+public abstract class AbstractSmartProposalComputer implements IJavaCompletionProposalComputer {
 
 	protected static final long TIMEOUT = Long.getLong("org.gap.eclipse.jdt.types.smartSearchTimeout", defaultTimeout());
 	private Set<String> unsupportedTypes = Sets.newHashSet("java.lang.String", "java.lang.Object",
@@ -81,4 +90,55 @@ public class AbstractSmartProposalComputer {
 		}
 		return false;
 	}
+
+	protected final ASTResult findInAST(JavaContentAssistInvocationContext context, IProgressMonitor monitor) {
+		ASTParser parser = ASTParser.newParser(AST.JLS_Latest);
+		parser.setSource(context.getCompilationUnit());
+		parser.setProject(context.getProject());
+		parser.setResolveBindings(true);
+		parser.setStatementsRecovery(true);
+		parser.setBindingsRecovery(true);
+		ASTNode ast = parser.createAST(monitor);
+		CompletionASTVistor visitor = new CompletionASTVistor(context);
+		ast.accept(visitor);
+		return new ASTResult(visitor.getExpectedTypes(), visitor.getExpectedTypeBindings(),
+				visitor.getExpectedTypeEntries());
+	}
+
+	@Override
+	public void sessionStarted() {
+	}
+
+	@Override
+	public final List<ICompletionProposal> computeCompletionProposals(ContentAssistInvocationContext context,
+			IProgressMonitor monitor) {
+		if (!shouldCompute(context)) {
+			return Collections.emptyList();
+		}
+
+		if (context instanceof JavaContentAssistInvocationContext) {
+			return computeSmartCompletionProposals((JavaContentAssistInvocationContext) context, monitor);
+		}
+		return Collections.emptyList();
+	}
+
+	@Override
+	public final List<IContextInformation> computeContextInformation(ContentAssistInvocationContext context,
+			IProgressMonitor monitor) {
+		return Collections.emptyList();
+	}
+
+	@Override
+	public String getErrorMessage() {
+		return null;
+	}
+
+	@Override
+	public void sessionEnded() {
+	}
+
+	protected abstract List<ICompletionProposal> computeSmartCompletionProposals(
+			JavaContentAssistInvocationContext context,
+			IProgressMonitor monitor);
+
 }

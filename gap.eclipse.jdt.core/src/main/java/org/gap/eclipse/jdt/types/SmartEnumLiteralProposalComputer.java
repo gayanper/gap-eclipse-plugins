@@ -23,9 +23,6 @@ import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.Signature;
-import org.eclipse.jdt.core.dom.AST;
-import org.eclipse.jdt.core.dom.ASTNode;
-import org.eclipse.jdt.core.dom.ASTParser;
 import org.eclipse.jdt.core.search.IJavaSearchConstants;
 import org.eclipse.jdt.core.search.SearchEngine;
 import org.eclipse.jdt.core.search.SearchMatch;
@@ -33,11 +30,9 @@ import org.eclipse.jdt.core.search.SearchParticipant;
 import org.eclipse.jdt.core.search.SearchPattern;
 import org.eclipse.jdt.core.search.SearchRequestor;
 import org.eclipse.jdt.ui.text.java.CompletionProposalCollector;
-import org.eclipse.jdt.ui.text.java.ContentAssistInvocationContext;
 import org.eclipse.jdt.ui.text.java.IJavaCompletionProposalComputer;
 import org.eclipse.jdt.ui.text.java.JavaContentAssistInvocationContext;
 import org.eclipse.jface.text.contentassist.ICompletionProposal;
-import org.eclipse.jface.text.contentassist.IContextInformation;
 import org.gap.eclipse.jdt.CorePlugin;
 
 import com.google.common.base.Predicates;
@@ -50,37 +45,18 @@ public class SmartEnumLiteralProposalComputer extends AbstractSmartProposalCompu
 	private final LastInvocation lastInvocation = new LastInvocation();
 
 	@Override
-	public void sessionStarted() {
-	}
-
-	@Override
-	public List<ICompletionProposal> computeCompletionProposals(ContentAssistInvocationContext invocationContext,
+	public List<ICompletionProposal> computeSmartCompletionProposals(JavaContentAssistInvocationContext context,
 			IProgressMonitor monitor) {
-		if(!shouldCompute(invocationContext)) {
-			return Collections.emptyList();
-		}
-		
-		if (invocationContext instanceof JavaContentAssistInvocationContext) {
-			JavaContentAssistInvocationContext context = (JavaContentAssistInvocationContext) invocationContext;
-			if (context.getExpectedType() == null) {
-				return searchFromAST((JavaContentAssistInvocationContext) context, monitor);
-			}
+		if (context.getExpectedType() == null) {
+			return searchFromAST(context, monitor);
 		}
 		return Collections.emptyList();
 	}
 
 	private List<ICompletionProposal> searchFromAST(JavaContentAssistInvocationContext context,
 			IProgressMonitor monitor) {
-		ASTParser parser = ASTParser.newParser(AST.JLS13);
-		parser.setSource(context.getCompilationUnit());
-		parser.setProject(context.getProject());
-		parser.setResolveBindings(true);
-		parser.setStatementsRecovery(true);
-		parser.setBindingsRecovery(true);
-		ASTNode ast = parser.createAST(monitor);
-		CompletionASTVistor visitor = new CompletionASTVistor(context);
-		ast.accept(visitor);
-		return visitor.getExpectedTypes().stream().parallel()
+		ASTResult result = findInAST(context, monitor);
+		return result.getExpectedTypes().stream().parallel()
 			.filter(t -> !isUnsupportedType(t.getFullyQualifiedName()))
 			.flatMap(t -> {
 					try {
@@ -195,21 +171,5 @@ public class SmartEnumLiteralProposalComputer extends AbstractSmartProposalCompu
 			response.trimToSize();
 		}
 		return response;
-	}
-
-	@Override
-	public List<IContextInformation> computeContextInformation(ContentAssistInvocationContext context,
-			IProgressMonitor monitor) {
-		return Collections.emptyList();
-	}
-
-	@Override
-	public String getErrorMessage() {
-		return null;
-	}
-
-	@Override
-	public void sessionEnded() {
-
 	}
 }
