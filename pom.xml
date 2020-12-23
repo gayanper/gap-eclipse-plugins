@@ -26,12 +26,12 @@
     <repository>
       <id>release</id>
       <layout>p2</layout>
-      <url>http://download.eclipse.org/releases/2020-09</url>
+      <url>http://download.eclipse.org/releases/2020-12</url>
     </repository>
     <repository>
     	<id>updates</id>
     	<layout>p2</layout>
-    	<url>http://download.eclipse.org/eclipse/updates/4.17</url>
+    	<url>http://download.eclipse.org/eclipse/updates/4.18</url>
     </repository>
   </repositories>
   <build>
