@@ -66,10 +66,14 @@ public abstract class AbstractSmartProposalComputer implements IJavaCompletionPr
 						jcontext.getCoreContext().getTokenStart() > 0 &&
 						!".".equals(jcontext.getDocument().get(jcontext.getCoreContext().getTokenStart() - 1, 1));
 			} catch (BadLocationException e) {
-				CorePlugin.getDefault().logError(e.getMessage(), e);
+				logError(e);
 			}
 		}
 		return false;
+	}
+
+	protected final void logError(Exception e) {
+		CorePlugin.getDefault().logError(e.getMessage(), e);
 	}
 	
 	protected final boolean isUnsupportedType(String fqn) {

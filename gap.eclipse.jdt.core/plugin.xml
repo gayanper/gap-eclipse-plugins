@@ -110,6 +110,17 @@
 		 </javaCompletionProposalComputer>
    </extension>
    <extension
+         id="gap.eclipse.jdt.java8"
+         name="Java 8 Proposals"
+         point="org.eclipse.jdt.ui.javaCompletionProposalComputer">
+		<javaCompletionProposalComputer
+        activate="false"
+        categoryId="gap.eclipse.jdt.core.java8"
+        class="org.gap.eclipse.jdt.types.Java8ProposalComputer"
+        requiresUIThread="false">
+		 </javaCompletionProposalComputer>
+   </extension>
+   <extension
          point="org.eclipse.ui.workbench.texteditor.hyperlinkDetectors">
       <hyperlinkDetector
             activate="true"
@@ -160,6 +171,14 @@
    <extension
          id="smartType"
          name="Smart Type Completion"
+         point="org.eclipse.jdt.ui.javaCompletionProposalComputer">
+      <proposalCategory
+            icon="icons/view16/sessionprocessor_types.png">
+      </proposalCategory>
+   </extension>
+   <extension
+         id="java8"
+         name="Java 8 Completion"
          point="org.eclipse.jdt.ui.javaCompletionProposalComputer">
       <proposalCategory
             icon="icons/view16/sessionprocessor_types.png">

@@ -3,7 +3,9 @@ package org.gap.eclipse.jdt;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.jface.resource.ImageDescriptor;
+import org.eclipse.jface.resource.ImageRegistry;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
+import org.gap.eclipse.jdt.common.Images;
 import org.osgi.framework.BundleContext;
 
 /**
@@ -70,5 +72,10 @@ public class CorePlugin extends AbstractUIPlugin {
 
 	public void logInfo(String message) {
 		getLog().log(new Status(IStatus.INFO, PLUGIN_ID, message));
+	}
+
+	@Override
+	protected void initializeImageRegistry(ImageRegistry reg) {
+		Images.initializeImageRegistry(reg);
 	}
 }

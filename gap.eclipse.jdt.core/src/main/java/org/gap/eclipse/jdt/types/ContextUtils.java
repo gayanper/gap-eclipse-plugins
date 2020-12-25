@@ -10,6 +10,10 @@ final class ContextUtils {
 		return context.getInvocationOffset() + context.getTextSelection().getLength();
 	}
 
+	public static int computeReplacementLength(JavaContentAssistInvocationContext context) {
+		return context.getTextSelection().getLength();
+	}
+
 	public static int computeInvocationOffset(JavaContentAssistInvocationContext context) {
 		if (context.getCoreContext() != null && context.getCoreContext().getToken() != null
 				&& context.getCoreContext().getToken().length > 0) {
