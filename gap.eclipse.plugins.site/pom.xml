@@ -30,7 +30,7 @@
 								</goals>
 								<configuration>
 									<executable>${basedir}/upload.sh</executable>
-									<commandlineArgs>${env.bintray_api_key} ${project.build.directory}/${project.artifactId}-${project.version}.zip ${site-version}</commandlineArgs>
+									<commandlineArgs>${env.BINTRAY_API_KEY} ${env.BINTRAY_USER} ${project.build.directory}/${project.artifactId}-${project.version}.zip ${site-version}</commandlineArgs>
 								</configuration>
 							</execution>
 						</executions>
