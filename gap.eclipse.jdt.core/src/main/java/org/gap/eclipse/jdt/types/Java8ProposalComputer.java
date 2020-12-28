@@ -1,5 +1,6 @@
 package org.gap.eclipse.jdt.types;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -27,6 +28,10 @@ public class Java8ProposalComputer extends AbstractSmartProposalComputer impleme
 	@Override
 	protected List<ICompletionProposal> computeSmartCompletionProposals(JavaContentAssistInvocationContext context,
 			IProgressMonitor monitor) {
+		if (isPreceedSpaceNewKeyword(context)) {
+			return Collections.emptyList();
+		}
+
 		if (context.getExpectedType() != null) {
 			return computeJava8Proposals(Set.of(context.getExpectedType()), context);
 		} else {

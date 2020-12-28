@@ -1,6 +1,5 @@
 package org.gap.eclipse.jdt.types;
 
-import java.util.StringJoiner;
 import java.util.stream.Stream;
 
 import org.eclipse.jdt.core.IMethod;
@@ -15,32 +14,11 @@ public final class Proposals {
 	static Stream<ICompletionProposal> toLambdaProposal(IMethod method, JavaContentAssistInvocationContext context)
 			throws JavaModelException {
 		final String[] parameterNames = method.getParameterNames();
-		StringBuilder completionString = new StringBuilder(4 + parameterNames.length);
-
-		if (parameterNames.length != 1) {
-			completionString.append("(");
-		}
-
-		StringJoiner joiner = new StringJoiner(",");
-		Stream.of(parameterNames).forEach(joiner::add);
-		completionString.append(joiner.toString());
-
-		if (parameterNames.length != 1) {
-			completionString.append(")");
-		}
-		completionString.append(" -> ");
-
 		ICompletionProposal[] proposals = new ICompletionProposal[2];
 
-		proposals[0] = new LambdaCompletionProposal(context.getInvocationOffset(),
-				ContextUtils.computeReplacementLength(context), completionString.toString(), completionString.length(),
-				10000);
+		proposals[0] = new LambdaCompletionProposal("(...) ->", parameterNames, true, 10000, context);
 
-		completionString.append("{}");
-
-		proposals[1] = new LambdaCompletionProposal(context.getInvocationOffset(),
-				ContextUtils.computeReplacementLength(context), completionString.toString(),
-				completionString.length() - 1, 9999);
+		proposals[1] = new LambdaCompletionProposal("(...) -> {}", parameterNames, false, 9999, context);
 
 		return Stream.of(proposals);
 	}

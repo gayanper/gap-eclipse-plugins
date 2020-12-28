@@ -11,10 +11,8 @@ import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.Signature;
 import org.eclipse.jdt.core.dom.ITypeBinding;
-import org.eclipse.jdt.ui.text.java.ContentAssistInvocationContext;
 import org.eclipse.jdt.ui.text.java.IJavaCompletionProposalComputer;
 import org.eclipse.jdt.ui.text.java.JavaContentAssistInvocationContext;
-import org.eclipse.jface.text.BadLocationException;
 import org.eclipse.jface.text.contentassist.ICompletionProposal;
 import org.gap.eclipse.jdt.CorePlugin;
 
@@ -71,19 +69,5 @@ public class SmartStaticProposalComputer extends AbstractSmartProposalComputer i
 		}
 		
 		return completionList(monitor, context, expectedTypeNames);
-	}
-
-	private boolean isPreceedSpaceNewKeyword(ContentAssistInvocationContext context) {
-		final int offset = context.getInvocationOffset();
-		final String keywordPrefix = "new ";
-		if (offset > keywordPrefix.length()) {
-			try {
-				return context.getDocument().get(offset - keywordPrefix.length(), keywordPrefix.length())
-						.equals(keywordPrefix);
-			} catch (BadLocationException e) {
-				CorePlugin.getDefault().logError(e.getMessage(), e);
-			}
-		}
-		return false;
 	}
 }

@@ -10,12 +10,9 @@ import java.util.stream.Collectors;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.Signature;
-import org.eclipse.jdt.ui.text.java.ContentAssistInvocationContext;
 import org.eclipse.jdt.ui.text.java.IJavaCompletionProposalComputer;
 import org.eclipse.jdt.ui.text.java.JavaContentAssistInvocationContext;
-import org.eclipse.jface.text.BadLocationException;
 import org.eclipse.jface.text.contentassist.ICompletionProposal;
-import org.gap.eclipse.jdt.CorePlugin;
 
 public class SmartTypeProposalComputer extends AbstractSmartProposalComputer
 		implements IJavaCompletionProposalComputer {
@@ -71,19 +68,5 @@ public class SmartTypeProposalComputer extends AbstractSmartProposalComputer
 				.flatMap(e -> completionList(monitor, context, e.getValue(), performSubType, e.getKey().isArray())
 						.stream())
 				.collect(Collectors.toList());
-	}
-
-	private boolean isPreceedSpaceNewKeyword(ContentAssistInvocationContext context) {
-		final int offset = context.getInvocationOffset();
-		final String keywordPrefix = "new ";
-		if (offset > keywordPrefix.length()) {
-			try {
-				return context.getDocument().get(offset - keywordPrefix.length(), keywordPrefix.length())
-						.equals(keywordPrefix);
-			} catch (BadLocationException e) {
-				CorePlugin.getDefault().logError(e.getMessage(), e);
-			}
-		}
-		return false;
 	}
 }

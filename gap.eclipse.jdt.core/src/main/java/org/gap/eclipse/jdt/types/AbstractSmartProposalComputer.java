@@ -145,4 +145,18 @@ public abstract class AbstractSmartProposalComputer implements IJavaCompletionPr
 			JavaContentAssistInvocationContext context,
 			IProgressMonitor monitor);
 
+	protected boolean isPreceedSpaceNewKeyword(ContentAssistInvocationContext context) {
+		final int offset = context.getInvocationOffset();
+		final String keywordPrefix = "new ";
+		if (offset > keywordPrefix.length()) {
+			try {
+				return context.getDocument().get(offset - keywordPrefix.length(), keywordPrefix.length())
+						.equals(keywordPrefix);
+			} catch (BadLocationException e) {
+				CorePlugin.getDefault().logError(e.getMessage(), e);
+			}
+		}
+		return false;
+	}
+
 }
