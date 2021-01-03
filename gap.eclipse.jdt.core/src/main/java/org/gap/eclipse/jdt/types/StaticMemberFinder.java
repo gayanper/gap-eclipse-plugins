@@ -2,7 +2,6 @@ package org.gap.eclipse.jdt.types;
 
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -17,7 +16,6 @@ import java.util.stream.Stream;
 
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
-import org.eclipse.jdt.core.CompletionProposal;
 import org.eclipse.jdt.core.Flags;
 import org.eclipse.jdt.core.IField;
 import org.eclipse.jdt.core.IJavaElement;
@@ -34,7 +32,6 @@ import org.eclipse.jdt.core.search.SearchParticipant;
 import org.eclipse.jdt.core.search.SearchPattern;
 import org.eclipse.jdt.core.search.SearchRequestor;
 import org.eclipse.jdt.internal.core.search.JavaSearchScope;
-import org.eclipse.jdt.ui.text.java.CompletionProposalCollector;
 import org.eclipse.jdt.ui.text.java.JavaContentAssistInvocationContext;
 import org.eclipse.jface.text.contentassist.ICompletionProposal;
 import org.gap.eclipse.jdt.CorePlugin;
@@ -95,9 +92,9 @@ public class StaticMemberFinder {
 			IProgressMonitor monitor) {
 		try {
 			if (member instanceof IField) {
-				return createStaticFieldProposal((IField) member, context, monitor);
+				return Proposals.createFieldProposal((IField) member, context);
 			} else if (member instanceof IMethod) {
-				return createStaticMethodProposal((IMethod) member, context, monitor);
+				return Proposals.createMethodProposal((IMethod) member, context);
 			} else if (member instanceof MessageCompletionMember) {
 				return createMessageProposal((MessageCompletionMember) member);
 			}
@@ -111,83 +108,6 @@ public class StaticMemberFinder {
 		return new MessageCompletionProposal(member.getElementName());
 	}
 
-	private ICompletionProposal createStaticFieldProposal(IField field, JavaContentAssistInvocationContext context,
-			IProgressMonitor monitor) throws JavaModelException {
-
-		CompletionProposal proposal = CompletionProposal.create(CompletionProposal.FIELD_REF,
-				context.getInvocationOffset());
-		String fullyQualifiedName = field.getDeclaringType().getElementName().concat(".")
-				.concat(field.getElementName());
-		proposal.setName(field.getElementName().toCharArray());
-		proposal.setCompletion(fullyQualifiedName.toCharArray());
-		proposal.setDeclarationSignature(
-				Signature.createTypeSignature(field.getDeclaringType().getFullyQualifiedName(), true).toCharArray());
-		proposal.setFlags(field.getFlags());
-		float relevance = context.getHistoryRelevance(fullyQualifiedName);
-		proposal.setRelevance((int) (50 * (relevance < 0.1 ? 0.1 : relevance)));
-		proposal.setReplaceRange(context.getInvocationOffset(), ContextUtils.computeEndOffset(context));
-		proposal.setSignature(field.getTypeSignature().toCharArray());
-		proposal.setRequiredProposals(
-				new CompletionProposal[] { createImportProposal(context, field.getDeclaringType()) });
-
-		CompletionProposalCollector collector = new CompletionProposalCollector(context.getCompilationUnit());
-		collector.setInvocationContext(context);
-		collector.acceptContext(context.getCoreContext());
-		collector.accept(proposal);
-
-		return collector.getJavaCompletionProposals()[0];
-	}
-
-	private ICompletionProposal createStaticMethodProposal(IMethod method, JavaContentAssistInvocationContext context,
-			IProgressMonitor monitor) throws JavaModelException {
-
-		CompletionProposal proposal = CompletionProposal.create(CompletionProposal.METHOD_REF,
-				context.getInvocationOffset());
-		String fullyQualifiedName = method.getDeclaringType().getElementName().concat(".")
-				.concat(method.getElementName());
-		proposal.setName(method.getElementName().toCharArray());
-		proposal.setCompletion(createMethodCompletion(method));
-		proposal.setDeclarationSignature(
-				Signature.createTypeSignature(method.getDeclaringType().getFullyQualifiedName(), true).toCharArray());
-		proposal.setFlags(method.getFlags());
-		float relevance = context.getHistoryRelevance(fullyQualifiedName);
-		proposal.setRelevance((int) (100 * (relevance < 0.1 ? 0.1 : relevance)));
-		proposal.setReplaceRange(ContextUtils.computeInvocationOffset(context), ContextUtils.computeEndOffset(context));
-		proposal.setSignature(method.getSignature().replaceAll("/", ".").toCharArray());
-		proposal.setRequiredProposals(
-				new CompletionProposal[] { createImportProposal(context, method.getDeclaringType()) });
-
-		CompletionProposalCollector collector = new CompletionProposalCollector(context.getCompilationUnit());
-		collector.setInvocationContext(context);
-		collector.acceptContext(context.getCoreContext());
-		collector.accept(proposal);
-
-		return collector.getJavaCompletionProposals()[0];
-	}
-
-	private CompletionProposal createImportProposal(JavaContentAssistInvocationContext context, IType type)
-			throws JavaModelException {
-		CompletionProposal proposal = CompletionProposal.create(CompletionProposal.TYPE_IMPORT,
-				context.getInvocationOffset());
-		String fullyQualifiedName = type.getFullyQualifiedName();
-		proposal.setCompletion(fullyQualifiedName.toCharArray());
-		proposal.setDeclarationSignature(type.getPackageFragment().getElementName().toCharArray());
-		proposal.setFlags(type.getFlags());
-		proposal.setSignature(Signature.createTypeSignature(fullyQualifiedName, true).toCharArray());
-
-		return proposal;
-	}
-
-	private char[] createMethodCompletion(IMethod method) throws JavaModelException {
-		StringBuilder builder = new StringBuilder();
-		builder.append(method.getDeclaringType().getElementName());
-		builder.append(".").append(method.getElementName());
-		builder.append("(");
-		builder.append(Arrays.stream(method.getParameterNames()).collect(Collectors.joining(",")));
-		builder.append(")");
-		return builder.toString().toCharArray();
-	}
-
 	private boolean onlyPublicStatic(IMember member) {
 		try {
 			return Flags.isStatic(member.getFlags()) && Flags.isPublic(member.getFlags())
@@ -198,7 +118,8 @@ public class StaticMemberFinder {
 		}
 	}
 
-	private boolean matchReturnTypeIfMethod(IMember member, List<String> typeSigs) {
+	private boolean matchReturnTypeIfMethod(IMember member, List<String> typeSigs,
+			JavaContentAssistInvocationContext context, IProgressMonitor monitor) {
 		try {
 			if (member instanceof IMethod) {
 				String type = Signatures.getFullQualifiedResolvedReturnType((IMethod) member);
@@ -207,6 +128,19 @@ public class StaticMemberFinder {
 					if (Signature.getTypeSignatureKind(type) == Signature.getTypeSignatureKind(typeSig)
 							&& Signatures.isAssignable(type, typeSig)) {
 						return true;
+					} else if (isParameterized(type)) {
+						IType leftType = context.getProject()
+								.findType(Signature
+										.getTypeErasure(String.join(".", Signature.getSignatureQualifier(typeSig),
+												Signature.getSignatureSimpleName(typeSig))));
+						IType rightType = context.getProject()
+								.findType(Signature.getTypeErasure(
+										String.join(".", String.join(".", Signature.getSignatureQualifier(type),
+												Signature.getSignatureSimpleName(type)))));
+						if (leftType != null && rightType != null
+								&& rightType.newSupertypeHierarchy(monitor).contains(leftType)) {
+							return true;
+						}
 					}
 				}
 				return false;
@@ -216,6 +150,12 @@ public class StaticMemberFinder {
 			return false;
 		}
 		return true;
+	}
+
+	private boolean isParameterized(String type) {
+		String[] ta = Signature.getTypeArguments(type);
+		return Stream.of(ta).map(Signature::getTypeSignatureKind)
+				.allMatch(k -> (k == Signature.WILDCARD_TYPE_SIGNATURE || k == Signature.TYPE_VARIABLE_SIGNATURE));
 	}
 
 	private boolean matchingElement(SearchMatch match) {
@@ -291,7 +231,8 @@ public class StaticMemberFinder {
 								if (matchingElement(match)) {
 									final IMember member = (IMember) match.getElement();
 									if (onlyPublicStatic(member)
-											&& (typeSigs.isEmpty() || matchReturnTypeIfMethod(member, typeSigs))) {
+											&& (typeSigs.isEmpty()
+													|| matchReturnTypeIfMethod(member, typeSigs, context, monitor))) {
 										resultAccumerlator.add((IMember) match.getElement());
 									}
 								}

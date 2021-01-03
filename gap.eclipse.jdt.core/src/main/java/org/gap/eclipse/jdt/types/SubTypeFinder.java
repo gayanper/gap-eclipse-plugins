@@ -2,14 +2,15 @@ package org.gap.eclipse.jdt.types;
 
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.eclipse.core.runtime.CoreException;
@@ -17,6 +18,7 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.jdt.core.CompletionProposal;
 import org.eclipse.jdt.core.Flags;
 import org.eclipse.jdt.core.IJavaProject;
+import org.eclipse.jdt.core.IMethod;
 import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.JavaModelException;
@@ -26,8 +28,7 @@ import org.eclipse.jdt.internal.ui.text.java.LazyJavaTypeCompletionProposal;
 import org.eclipse.jdt.ui.text.java.JavaContentAssistInvocationContext;
 import org.eclipse.jface.text.contentassist.ICompletionProposal;
 import org.gap.eclipse.jdt.CorePlugin;
-
-import com.google.common.base.Predicates;
+import org.gap.eclipse.jdt.common.Log;
 
 @SuppressWarnings("restriction")
 public class SubTypeFinder {
@@ -35,15 +36,14 @@ public class SubTypeFinder {
 	public Stream<ICompletionProposal> find(final IType expectedType, JavaContentAssistInvocationContext context,
 			IProgressMonitor monitor, Duration timeout) {
 		return performSearch(expectedType, context, monitor, timeout)
-				.filter(t -> {
+				.map(m -> {
 					try {
-						return !Flags.isAbstract(t.getFlags()) && Flags.isPublic(t.getFlags());
+						return Proposals.createMethodProposal(m, context);
 					} catch (JavaModelException e) {
-						CorePlugin.getDefault().logError(e.getMessage(), e);
+						Log.error(e);
+						return null;
 					}
-					return false;
-				})
-				.map(m -> toCompletionProposal(m, context, monitor, false, false)).filter(Predicates.notNull());
+				}).filter(Objects::nonNull);
 	}
 
 	public static ICompletionProposal toCompletionProposal(IType type, JavaContentAssistInvocationContext context,
@@ -80,15 +80,37 @@ public class SubTypeFinder {
 		return source != null && JavaCore.compareJavaVersions(JavaCore.VERSION_1_5, source) <= 0;
 	}
 
-	private Stream<IType> performSearch(IType expectedType, JavaContentAssistInvocationContext context,
+	private Stream<IMethod> performSearch(IType expectedType, JavaContentAssistInvocationContext context,
 			IProgressMonitor monitor, Duration timeout) {
-		final List<IType> resultAccumerlator = Collections.synchronizedList(new ArrayList<>());
+		final List<IMethod> resultAccumerlator = Collections.synchronizedList(new ArrayList<>());
 
 		final ExecutorService executor = Executors.newSingleThreadExecutor();
 		Future<?> task = executor.submit(() -> {
 			try {
 				IType[] subtypes = expectedType.newTypeHierarchy(monitor).getAllSubtypes(expectedType);
-				resultAccumerlator.addAll(Arrays.asList(subtypes));
+				List<IMethod> constructors = Stream.of(subtypes).filter(t -> {
+					try {
+						return !Flags.isAbstract(t.getFlags()) && Flags.isPublic(t.getFlags());
+					} catch (JavaModelException e) {
+						CorePlugin.getDefault().logError(e.getMessage(), e);
+					}
+					return false;
+				}).flatMap(t -> {
+					try {
+						return Stream.of(t.getMethods()).filter(m -> {
+							try {
+								return m.isConstructor();
+							} catch (JavaModelException e) {
+								Log.error(e);
+								return false;
+							}
+						});
+					} catch (JavaModelException e) {
+						Log.error(e);
+						return Stream.empty();
+					}
+				}).collect(Collectors.toList());
+				resultAccumerlator.addAll(constructors);
 			} catch (CoreException e) {
 				CorePlugin.getDefault().logError(e.getMessage(), e);
 			}

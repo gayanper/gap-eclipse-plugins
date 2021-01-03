@@ -1,20 +1,18 @@
 package org.gap.eclipse.jdt.types;
 
 import java.time.Duration;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.eclipse.core.runtime.IProgressMonitor;
-import org.eclipse.jdt.core.IType;
-import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.Signature;
 import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.ui.text.java.IJavaCompletionProposalComputer;
 import org.eclipse.jdt.ui.text.java.JavaContentAssistInvocationContext;
 import org.eclipse.jface.text.contentassist.ICompletionProposal;
-import org.gap.eclipse.jdt.CorePlugin;
 
 public class SmartStaticProposalComputer extends AbstractSmartProposalComputer implements IJavaCompletionProposalComputer {
 	public static final String CATEGORY_ID = "gap.eclipse.jdt.proposalCategory.smartStatic";
@@ -24,22 +22,20 @@ public class SmartStaticProposalComputer extends AbstractSmartProposalComputer i
 	@Override
 	public List<ICompletionProposal> computeSmartCompletionProposals(JavaContentAssistInvocationContext context,
 			IProgressMonitor monitor) {
-		final IType type = context.getExpectedType();
 		// following null check for type eliminates primitive types.
-		if (type != null && context.getCoreContext().getExpectedTypesSignatures() != null &&
-				context.getCoreContext().getExpectedTypesSignatures().length > 0) {
+		if (context.getExpectedType() != null && context.getCoreContext() != null
+				&& context.getCoreContext().getExpectedTypesSignatures() != null
+				&& context.getCoreContext().getExpectedTypesSignatures().length > 0) {
 			
-			final String expectedTypeFQN = toParameterizeFQN(context.getCoreContext().getExpectedTypesSignatures()[0]);	
+			List<String> types = Stream.of(context.getCoreContext().getExpectedTypesSignatures())
+					.map(this::toParameterizeFQN)
+					.filter(Predicate.not(t -> isUnsupportedType(Signature.getTypeErasure(t))))
+					.collect(Collectors.toList());
 			
-			try {
-				if (isUnsupportedType(Signature.getTypeErasure(expectedTypeFQN)) || type.isEnum()) {
-					return Collections.emptyList();
-				}
-				return completionList(monitor, context, Arrays.asList(expectedTypeFQN));
-			} catch (JavaModelException e) {
-				CorePlugin.getDefault().logError(e.getMessage(), e);
+			if (types.isEmpty()) {
 				return Collections.emptyList();
 			}
+			return completionList(monitor, context, types);
 		} else {
 			return searchFromAST(context, monitor);
 		}
