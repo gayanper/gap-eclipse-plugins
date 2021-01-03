@@ -1,5 +1,6 @@
 package org.gap.eclipse.jdt.types;
 
+import java.util.Collections;
 import java.util.StringJoiner;
 
 import org.eclipse.jdt.ui.text.java.JavaContentAssistInvocationContext;
@@ -19,14 +20,25 @@ public class LambdaCompletionProposal extends LazyJavaCompletionProposal {
 	private final int[] paramOffsets;
 	private final int[] paramLengths;
 
-	protected LambdaCompletionProposal(String displayString, String[] parameterNames, boolean inline, int relevance,
+	protected LambdaCompletionProposal(String[] parameterNames, boolean inline, int relevance,
 			JavaContentAssistInvocationContext context) {
-		super(displayString, relevance, context);
+		super(generateDisplayString(parameterNames.length, inline), relevance, context);
 		this.parameterNames = parameterNames;
 		this.inline = inline;
 
 		paramOffsets = new int[parameterNames.length];
 		paramLengths = new int[parameterNames.length];
+	}
+
+	private static String generateDisplayString(int paraCount, boolean inline) {
+		StringBuilder builder = new StringBuilder("(");
+		builder.append(String.join("", Collections.nCopies(paraCount, ".")));
+		builder.append(") ->");
+
+		if (!inline) {
+			builder.append(" {}");
+		}
+		return builder.toString();
 	}
 
 	@Override

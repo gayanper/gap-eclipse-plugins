@@ -1,28 +1,40 @@
 package org.gap.eclipse.jdt.types;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.NullProgressMonitor;
+import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.core.Flags;
+import org.eclipse.jdt.core.ICompilationUnit;
+import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IMethod;
 import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.JavaModelException;
+import org.eclipse.jdt.ui.text.java.CompletionProposalCollector;
 import org.eclipse.jdt.ui.text.java.IJavaCompletionProposalComputer;
 import org.eclipse.jdt.ui.text.java.JavaContentAssistInvocationContext;
 import org.eclipse.jface.text.contentassist.ICompletionProposal;
+import org.gap.eclipse.jdt.common.Log;
 
 public class Java8ProposalComputer extends AbstractSmartProposalComputer implements IJavaCompletionProposalComputer {
 	private List<Entry<String, String>> methodSignaturesToIgnore;
 
+	private MethodReferenceFinder methodReferenceFinder;
+
 	public Java8ProposalComputer() {
 		this.methodSignaturesToIgnore = List.of(Map.entry("equals", "(Ljava/lang/Object;)Z"), Map.entry("wait", "()V"),
 				Map.entry("wait", "(JI)V"), Map.entry("wait", "(J)V"));
+		this.methodReferenceFinder = new MethodReferenceFinder();
 	}
 
 	@Override
@@ -32,6 +44,8 @@ public class Java8ProposalComputer extends AbstractSmartProposalComputer impleme
 			return Collections.emptyList();
 		}
 
+		initializeRequiredContext(context);
+
 		if (context.getExpectedType() != null) {
 			return computeJava8Proposals(Set.of(context.getExpectedType()), context);
 		} else {
@@ -40,17 +54,44 @@ public class Java8ProposalComputer extends AbstractSmartProposalComputer impleme
 		}
 	}
 
+	private void initializeRequiredContext(final JavaContentAssistInvocationContext ctx) {
+		CompletionProposalCollector collector = new CompletionProposalCollector(ctx.getCompilationUnit());
+		collector.setInvocationContext(ctx);
+		ICompilationUnit cu = ctx.getCompilationUnit();
+		int offset = ctx.getInvocationOffset();
+		try {
+			cu.codeComplete(offset, collector, new NullProgressMonitor());
+		} catch (JavaModelException e) {
+			// try to continue
+		}
+	}
+
 	private List<ICompletionProposal> computeJava8Proposals(Set<IType> types,
 			JavaContentAssistInvocationContext context) {
-		return types.stream().flatMap(this::functionalTypeMethod).flatMap(m -> {
-			return toLambdaProposal(context, m);
-		}).collect(Collectors.toList());
+		return types.stream().flatMap(this::functionalTypeMethod).flatMap(m -> toLambdaProposal(context, m))
+				.collect(Collectors.toList());
 	}
 
 	private Stream<? extends ICompletionProposal> toLambdaProposal(JavaContentAssistInvocationContext context,
-			IMethod m) {
+			IMethod method) {
 		try {
-			return Proposals.toLambdaProposal(m, context);
+			List<IJavaElement> elements = new ArrayList<>(List.of(Optional.ofNullable(context.getCoreContext())
+					.map(c -> c.getVisibleElements(null)).orElse(new IJavaElement[0])));
+			elements.addAll(resolveInbuiltSuggestions(context));
+
+			@NonNull
+			Stream<Entry<IJavaElement, IMethod>> methodReferences = methodReferenceFinder.find(method,
+					elements,
+					context);
+
+			return Stream.concat(methodReferences.map(e -> {
+				try {
+					return Proposals.toMethodReferenceProposal(e.getKey(), e.getValue(), context);
+				} catch (JavaModelException ex) {
+					Log.error(ex);
+					return null;
+				}
+			}).filter(Objects::nonNull), Proposals.toLambdaProposal(method, context));
 		} catch (JavaModelException e) {
 			logError(e);
 			return Stream.empty();
@@ -88,5 +129,16 @@ public class Java8ProposalComputer extends AbstractSmartProposalComputer impleme
 		String signature = method.getSignature();
 		return this.methodSignaturesToIgnore.stream()
 				.noneMatch(e -> e.getKey().equals(name) && e.getValue().equals(signature));
+	}
+
+	private List<IType> resolveInbuiltSuggestions(JavaContentAssistInvocationContext context) {
+		return InBuiltSuggestion.getMethodReferenceTypeSuggestions().stream().map(t -> {
+			try {
+				return context.getProject().findType(t);
+			} catch (JavaModelException ex) {
+				Log.error(ex);
+			}
+			return null;
+		}).filter(Objects::nonNull).collect(Collectors.toList());
 	}
 }

@@ -17,7 +17,8 @@ Require-Bundle: org.eclipse.ui,
  org.eclipse.search,
  org.eclipse.jdt.debug,
  org.eclipse.debug.core,
- org.eclipse.e4.ui.css.swt.theme
+ org.eclipse.e4.ui.css.swt.theme,
+ org.eclipse.jdt.annotation
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Import-Package: com.google.common.base;version="15.0.0",
  com.google.common.collect;version="15.0.0"

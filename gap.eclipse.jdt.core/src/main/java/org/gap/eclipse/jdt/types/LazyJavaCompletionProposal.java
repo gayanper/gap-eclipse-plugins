@@ -39,23 +39,24 @@ public abstract class LazyJavaCompletionProposal implements IJavaCompletionPropo
 			document.replace(context.getInvocationOffset(), ContextUtils.computeReplacementLength(context),
 					getReplacementString());
 
-			LinkedModeModel model = computeLinkedModeModel(document);
+			if (isSupportLinkMode()) {
+				LinkedModeModel model = computeLinkedModeModel(document);
 
-			model.forceInstall();
-			JavaEditor editor = getEditor();
-			if (editor != null) {
-				model.addLinkingListener(new EditorHighlightingSynchronizer(editor));
+				model.forceInstall();
+				JavaEditor editor = getEditor();
+				if (editor != null) {
+					model.addLinkingListener(new EditorHighlightingSynchronizer(editor));
+				}
+
+				final ITextViewer viewer = this.context.getViewer();
+				LinkedModeUI ui = new EditorLinkedModeUI(model, viewer);
+				ui.setExitPosition(viewer, getCursorPosition(), 0, Integer.MAX_VALUE);
+				ui.setDoContextInfo(true);
+				ui.setCyclingMode(LinkedModeUI.CYCLE_WHEN_NO_PARENT);
+				ui.enter();
+				IRegion selectedRegion = ui.getSelectedRegion();
+				selection = new Point(selectedRegion.getOffset(), selectedRegion.getLength());
 			}
-
-			final ITextViewer viewer = this.context.getViewer();
-			LinkedModeUI ui = new EditorLinkedModeUI(model, viewer);
-			ui.setExitPosition(viewer, getCursorPosition(), 0, Integer.MAX_VALUE);
-			ui.setDoContextInfo(true);
-			ui.setCyclingMode(LinkedModeUI.CYCLE_WHEN_NO_PARENT);
-			ui.enter();
-			IRegion selectedRegion = ui.getSelectedRegion();
-			selection = new Point(selectedRegion.getOffset(), selectedRegion.getLength());
-
 		} catch (BadLocationException e) {
 			Log.error(e);
 		}
@@ -106,6 +107,10 @@ public abstract class LazyJavaCompletionProposal implements IJavaCompletionPropo
 			this.replacementString = computeReplacementString();
 		}
 		return this.replacementString;
+	}
+
+	protected boolean isSupportLinkMode() {
+		return true;
 	}
 
 	private JavaEditor getEditor() {
