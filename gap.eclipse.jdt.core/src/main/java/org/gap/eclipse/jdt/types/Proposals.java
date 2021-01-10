@@ -43,7 +43,7 @@ public final class Proposals {
 		return new MethodRefCompletionProposal(qualifier.getElementName(), method.getElementName(), 9998, context);
 	}
 
-	static ICompletionProposal createMethodProposal(IMethod method, JavaContentAssistInvocationContext context)
+	static ICompletionProposal toMethodProposal(IMethod method, JavaContentAssistInvocationContext context)
 			throws JavaModelException {
 
 		CompletionProposal proposal = CompletionProposal.create(CompletionProposal.METHOD_REF,
@@ -70,7 +70,7 @@ public final class Proposals {
 		return collector.getJavaCompletionProposals()[0];
 	}
 
-	static ICompletionProposal createFieldProposal(IField field, JavaContentAssistInvocationContext context)
+	static ICompletionProposal toFieldProposal(IField field, JavaContentAssistInvocationContext context)
 			throws JavaModelException {
 
 		CompletionProposal proposal = CompletionProposal.create(CompletionProposal.FIELD_REF,

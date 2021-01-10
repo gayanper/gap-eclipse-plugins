@@ -92,9 +92,9 @@ public class StaticMemberFinder {
 			IProgressMonitor monitor) {
 		try {
 			if (member instanceof IField) {
-				return Proposals.createFieldProposal((IField) member, context);
+				return Proposals.toFieldProposal((IField) member, context);
 			} else if (member instanceof IMethod) {
-				return Proposals.createMethodProposal((IMethod) member, context);
+				return Proposals.toMethodProposal((IMethod) member, context);
 			} else if (member instanceof MessageCompletionMember) {
 				return createMessageProposal((MessageCompletionMember) member);
 			}

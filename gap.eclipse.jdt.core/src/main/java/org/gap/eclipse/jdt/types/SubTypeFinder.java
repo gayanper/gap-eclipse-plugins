@@ -38,7 +38,7 @@ public class SubTypeFinder {
 		return performSearch(expectedType, context, monitor, timeout)
 				.map(m -> {
 					try {
-						return Proposals.createMethodProposal(m, context);
+						return Proposals.toMethodProposal(m, context);
 					} catch (JavaModelException e) {
 						Log.error(e);
 						return null;
