@@ -5,8 +5,10 @@ import java.util.List;
 import java.util.Set;
 
 import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.jdt.core.CompletionProposal;
+import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.Signature;
@@ -14,6 +16,7 @@ import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTParser;
 import org.eclipse.jdt.internal.ui.javaeditor.JavaSourceViewer;
+import org.eclipse.jdt.ui.text.java.CompletionProposalCollector;
 import org.eclipse.jdt.ui.text.java.ContentAssistInvocationContext;
 import org.eclipse.jdt.ui.text.java.IJavaCompletionProposalComputer;
 import org.eclipse.jdt.ui.text.java.JavaContentAssistInvocationContext;
@@ -25,11 +28,14 @@ import org.osgi.framework.Version;
 
 import com.google.common.collect.Sets;
 
+@SuppressWarnings("restriction")
 public abstract class AbstractSmartProposalComputer implements IJavaCompletionProposalComputer {
 
 	protected static final long TIMEOUT = Long.getLong("org.gap.eclipse.jdt.types.smartSearchTimeout", defaultTimeout());
 	private Set<String> unsupportedTypes = Sets.newHashSet("java.lang.String", "java.lang.Object",
 			"java.lang.Cloneable", "java.lang.Throwable", "java.lang.Exception");
+
+	private volatile boolean contextFixed = false;
 
 	public AbstractSmartProposalComputer() {
 		super();
@@ -87,7 +93,6 @@ public abstract class AbstractSmartProposalComputer implements IJavaCompletionPr
 		return qualifier.concat(".").concat(name);
 	}
 	
-	@SuppressWarnings("restriction")
 	protected final boolean isAsyncCompletionActive(JavaContentAssistInvocationContext context) {
 		if (context.getViewer() instanceof JavaSourceViewer) {
 			return ((JavaSourceViewer) context.getViewer()).isAsyncCompletionActive();
@@ -116,14 +121,39 @@ public abstract class AbstractSmartProposalComputer implements IJavaCompletionPr
 	@Override
 	public final List<ICompletionProposal> computeCompletionProposals(ContentAssistInvocationContext context,
 			IProgressMonitor monitor) {
-		if (!shouldCompute(context)) {
-			return Collections.emptyList();
-		}
-
 		if (context instanceof JavaContentAssistInvocationContext) {
-			return computeSmartCompletionProposals((JavaContentAssistInvocationContext) context, monitor);
+			JavaContentAssistInvocationContext jcontext = (JavaContentAssistInvocationContext) context;
+			initializeRequiredContext(jcontext);
+
+			if (!shouldCompute(context)) {
+				return Collections.emptyList();
+			}
+			return computeSmartCompletionProposals(jcontext, monitor);
 		}
 		return Collections.emptyList();
+	}
+
+	private void initializeRequiredContext(final JavaContentAssistInvocationContext ctx) {
+		if (contextFixed) {
+			// This is to fix the issue where the core context is init without extended
+			// context,
+			// This happens due to the fact that getCoreContext will init a dummy one if the
+			// collector doesn't have a
+			// context due to async nature.
+			return;
+		}
+
+		contextFixed = true;
+		CompletionProposalCollector collector = new CompletionProposalCollector(ctx.getCompilationUnit(), true);
+		collector.setRequireExtendedContext(true);
+		collector.setInvocationContext(ctx);
+		ICompilationUnit cu = ctx.getCompilationUnit();
+		int offset = ctx.getInvocationOffset();
+		try {
+			cu.codeComplete(offset, collector, new NullProgressMonitor());
+		} catch (JavaModelException e) {
+			// try to continue
+		}
 	}
 
 	@Override
@@ -139,6 +169,7 @@ public abstract class AbstractSmartProposalComputer implements IJavaCompletionPr
 
 	@Override
 	public void sessionEnded() {
+		contextFixed = false;
 	}
 
 	protected abstract List<ICompletionProposal> computeSmartCompletionProposals(

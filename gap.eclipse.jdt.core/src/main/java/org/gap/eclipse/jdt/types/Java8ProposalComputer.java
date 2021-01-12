@@ -12,15 +12,12 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.eclipse.core.runtime.IProgressMonitor;
-import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.core.Flags;
-import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IMethod;
 import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.JavaModelException;
-import org.eclipse.jdt.ui.text.java.CompletionProposalCollector;
 import org.eclipse.jdt.ui.text.java.IJavaCompletionProposalComputer;
 import org.eclipse.jdt.ui.text.java.JavaContentAssistInvocationContext;
 import org.eclipse.jface.text.contentassist.ICompletionProposal;
@@ -44,25 +41,11 @@ public class Java8ProposalComputer extends AbstractSmartProposalComputer impleme
 			return Collections.emptyList();
 		}
 
-		initializeRequiredContext(context);
-
 		if (context.getExpectedType() != null) {
 			return computeJava8Proposals(Set.of(context.getExpectedType()), context);
 		} else {
 			final ASTResult result = findInAST(context, monitor);
 			return computeJava8Proposals(result.getExpectedTypes(), context);
-		}
-	}
-
-	private void initializeRequiredContext(final JavaContentAssistInvocationContext ctx) {
-		CompletionProposalCollector collector = new CompletionProposalCollector(ctx.getCompilationUnit());
-		collector.setInvocationContext(ctx);
-		ICompilationUnit cu = ctx.getCompilationUnit();
-		int offset = ctx.getInvocationOffset();
-		try {
-			cu.codeComplete(offset, collector, new NullProgressMonitor());
-		} catch (JavaModelException e) {
-			// try to continue
 		}
 	}
 
