@@ -22,8 +22,10 @@ import org.eclipse.jdt.core.dom.ClassInstanceCreation;
 import org.eclipse.jdt.core.dom.Expression;
 import org.eclipse.jdt.core.dom.IMethodBinding;
 import org.eclipse.jdt.core.dom.ITypeBinding;
+import org.eclipse.jdt.core.dom.LambdaExpression;
 import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.core.dom.Modifier;
+import org.eclipse.jdt.core.dom.PostfixExpression;
 import org.eclipse.jdt.core.dom.TypeDeclaration;
 import org.eclipse.jdt.ui.text.java.JavaContentAssistInvocationContext;
 import org.eclipse.jface.text.BadLocationException;
@@ -72,6 +74,28 @@ class CompletionASTVistor extends ASTVisitor {
 	public boolean visit(MethodInvocation node) {
 		return visitNode(node, Suppliers.memoize(node::arguments), method -> Arrays.asList(method.getParameterTypes()),
 				Suppliers.memoize(node::resolveMethodBinding));
+	}
+
+	@Override
+	public boolean visit(LambdaExpression node) {
+		resetVistor();
+		return true;
+	}
+
+	@Override
+	public boolean visit(PostfixExpression node) {
+		// .map(s ->); is identified as a postfix expression in map method
+
+		resetVistor();
+		return true;
+	}
+
+	private void resetVistor() {
+		this.lastFoundNode = null;
+		this.lastVisited = null;
+		this.argumentSupplier = null;
+		this.parameterSupplier = null;
+		this.bindingSupplier = null;
 	}
 
 	private boolean visitNode(Expression node, Supplier<List<ASTNode>> argumentSupplier, Function<IMethodBinding, List<ITypeBinding>> parameterSupplier, Supplier<IMethodBinding> bindingSupplier) {

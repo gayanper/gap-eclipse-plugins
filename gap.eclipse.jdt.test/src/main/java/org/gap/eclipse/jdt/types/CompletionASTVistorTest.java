@@ -324,6 +324,43 @@ public class CompletionASTVistorTest {
 				"java.util.List".equals(visitor.getExpectedTypes().iterator().next().getFullyQualifiedName()));
 	}
 	
+	@Test
+	public void getExpectedTypes_InSideLambdaBlock_ExpectZeroTypes() throws Exception {
+		StringBuilder code = new StringBuilder();
+		code.append("package completion.test;\n");
+		code.append("import java.util.stream.Stream;\n");
+		code.append("public class ASTFile {\n");
+		code.append("  public String foo() {\n");
+		code.append("	Stream.of(\"1\").map(s -> {$});\n");
+		code.append("  }\n");
+		code.append("}\n");
+
+		int index = getCompletionIndex(code);
+		ICompilationUnit cu = getCompilationUnit(pkg, code, "ASTFile.java");
+
+		CompletionASTVistor visitor = getVisitedVistor(cu, index);
+
+		assertTrue("Expected Types are not empty", visitor.getExpectedTypes().isEmpty());
+	}
+
+	@Test
+	public void getExpectedTypes_InSideLambdaStatement_ExpectZeroTypes() throws Exception {
+		StringBuilder code = new StringBuilder();
+		code.append("package completion.test;\n");
+		code.append("import java.util.stream.Stream;\n");
+		code.append("public class ASTFile {\n");
+		code.append("  public String foo() {\n");
+		code.append("	Stream.of(\"1\").map(s -> $);\n");
+		code.append("  }\n");
+		code.append("}\n");
+
+		int index = getCompletionIndex(code);
+		ICompilationUnit cu = getCompilationUnit(pkg, code, "ASTFile.java");
+
+		CompletionASTVistor visitor = getVisitedVistor(cu, index);
+
+		assertTrue("Expected Types are not empty", visitor.getExpectedTypes().isEmpty());
+	}
 
 	private CompletionASTVistor getVisitedVistor(ICompilationUnit cu, int index) throws Exception {
 		IEditorPart editor = EditorUtility.openInEditor(cu);
