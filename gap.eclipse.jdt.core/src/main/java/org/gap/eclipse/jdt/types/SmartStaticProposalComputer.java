@@ -3,9 +3,9 @@ package org.gap.eclipse.jdt.types;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.jdt.core.Signature;
@@ -22,16 +22,11 @@ public class SmartStaticProposalComputer extends AbstractSmartProposalComputer i
 	@Override
 	public List<ICompletionProposal> computeSmartCompletionProposals(JavaContentAssistInvocationContext context,
 			IProgressMonitor monitor) {
-		// following null check for type eliminates primitive types.
-		if (context.getExpectedType() != null && context.getCoreContext() != null
-				&& context.getCoreContext().getExpectedTypesSignatures() != null
-				&& context.getCoreContext().getExpectedTypesSignatures().length > 0) {
-			
-			List<String> types = Stream.of(context.getCoreContext().getExpectedTypesSignatures())
-					.map(this::toParameterizeFQN)
+		Set<String> expectedTypes = resolveExpectedTypes(context);
+		if (!expectedTypes.isEmpty()) {
+			List<String> types = expectedTypes.stream()
 					.filter(Predicate.not(t -> isUnsupportedType(Signature.getTypeErasure(t))))
 					.collect(Collectors.toList());
-			
 			if (types.isEmpty()) {
 				return Collections.emptyList();
 			}

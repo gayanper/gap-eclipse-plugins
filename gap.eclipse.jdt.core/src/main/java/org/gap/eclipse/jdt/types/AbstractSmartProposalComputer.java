@@ -1,12 +1,17 @@
 package org.gap.eclipse.jdt.types;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Platform;
+import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.core.CompletionProposal;
 import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.IType;
@@ -24,6 +29,7 @@ import org.eclipse.jface.text.BadLocationException;
 import org.eclipse.jface.text.contentassist.ICompletionProposal;
 import org.eclipse.jface.text.contentassist.IContextInformation;
 import org.gap.eclipse.jdt.CorePlugin;
+import org.gap.eclipse.jdt.common.Log;
 import org.osgi.framework.Version;
 
 import com.google.common.collect.Sets;
@@ -93,6 +99,28 @@ public abstract class AbstractSmartProposalComputer implements IJavaCompletionPr
 		return qualifier.concat(".").concat(name);
 	}
 	
+	protected final Set<String> resolveExpectedTypes(@NonNull JavaContentAssistInvocationContext context) {
+		if(context.getCoreContext() != null && context.getCoreContext().getExpectedTypesSignatures() != null) {
+			return Stream.of(context.getCoreContext().getExpectedTypesSignatures()).map(this::toParameterizeFQN)
+					.collect(Collectors.toSet());
+		}
+		return Collections.emptySet();
+	}
+
+	protected final Set<IType> resolveTypesFromProject(@NonNull Collection<String> typeSignatures,
+			@NonNull JavaContentAssistInvocationContext context, @NonNull IProgressMonitor monitor) {
+		return typeSignatures.stream()
+				.map(t -> Signature.getTypeErasure(t))
+					.map(t -> {
+					try {
+						return context.getProject().findType(t, monitor);
+					} catch (JavaModelException e) {
+						Log.error(e);
+						return null;
+					}
+				}).filter(Objects::nonNull).collect(Collectors.toSet());
+	}
+
 	protected final boolean isAsyncCompletionActive(JavaContentAssistInvocationContext context) {
 		if (context.getViewer() instanceof JavaSourceViewer) {
 			return ((JavaSourceViewer) context.getViewer()).isAsyncCompletionActive();

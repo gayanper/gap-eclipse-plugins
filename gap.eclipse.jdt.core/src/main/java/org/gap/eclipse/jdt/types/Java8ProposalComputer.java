@@ -41,8 +41,9 @@ public class Java8ProposalComputer extends AbstractSmartProposalComputer impleme
 			return Collections.emptyList();
 		}
 
-		if (context.getExpectedType() != null) {
-			return computeJava8Proposals(Set.of(context.getExpectedType()), context);
+		final Set<String> expectedTypes = resolveExpectedTypes(context);
+		if (!expectedTypes.isEmpty()) {
+			return computeJava8Proposals(resolveTypesFromProject(expectedTypes, context, monitor), context);
 		} else {
 			final ASTResult result = findInAST(context, monitor);
 			return computeJava8Proposals(result.getExpectedTypes(), context);
