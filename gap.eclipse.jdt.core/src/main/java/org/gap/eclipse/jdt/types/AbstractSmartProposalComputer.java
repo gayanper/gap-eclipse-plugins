@@ -41,8 +41,6 @@ public abstract class AbstractSmartProposalComputer implements IJavaCompletionPr
 	private Set<String> unsupportedTypes = Sets.newHashSet("java.lang.String", "java.lang.Object",
 			"java.lang.Cloneable", "java.lang.Throwable", "java.lang.Exception");
 
-	private volatile boolean contextFixed = false;
-
 	public AbstractSmartProposalComputer() {
 		super();
 	}
@@ -162,16 +160,12 @@ public abstract class AbstractSmartProposalComputer implements IJavaCompletionPr
 	}
 
 	private void initializeRequiredContext(final JavaContentAssistInvocationContext ctx) {
-		if (contextFixed) {
-			// This is to fix the issue where the core context is init without extended
-			// context,
-			// This happens due to the fact that getCoreContext will init a dummy one if the
-			// collector doesn't have a
-			// context due to async nature.
-			return;
-		}
+		// This is to fix the issue where the core context is init without extended
+		// context,
+		// This happens due to the fact that getCoreContext will init a dummy one if the
+		// collector doesn't have a
+		// context due to async nature.
 
-		contextFixed = true;
 		CompletionProposalCollector collector = new CompletionProposalCollector(ctx.getCompilationUnit(), true);
 		collector.setRequireExtendedContext(true);
 		collector.setInvocationContext(ctx);
@@ -197,7 +191,6 @@ public abstract class AbstractSmartProposalComputer implements IJavaCompletionPr
 
 	@Override
 	public void sessionEnded() {
-		contextFixed = false;
 	}
 
 	protected abstract List<ICompletionProposal> computeSmartCompletionProposals(
