@@ -18,15 +18,19 @@ import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IMethod;
 import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.JavaModelException;
+import org.eclipse.jdt.internal.codeassist.impl.AssistOptions;
 import org.eclipse.jdt.ui.text.java.IJavaCompletionProposalComputer;
 import org.eclipse.jdt.ui.text.java.JavaContentAssistInvocationContext;
 import org.eclipse.jface.text.contentassist.ICompletionProposal;
 import org.gap.eclipse.jdt.common.Log;
 
+@SuppressWarnings("restriction")
 public class Java8ProposalComputer extends AbstractSmartProposalComputer implements IJavaCompletionProposalComputer {
 	private List<Entry<String, String>> methodSignaturesToIgnore;
 
 	private MethodReferenceFinder methodReferenceFinder;
+
+	private AssistOptions assistOptions;
 
 	public Java8ProposalComputer() {
 		this.methodSignaturesToIgnore = List.of(Map.entry("equals", "(Ljava/lang/Object;)Z"), Map.entry("wait", "()V"),
@@ -41,6 +45,7 @@ public class Java8ProposalComputer extends AbstractSmartProposalComputer impleme
 			return Collections.emptyList();
 		}
 
+		assistOptions = getAssistOptions(context);
 		final Set<String> expectedTypes = resolveExpectedTypes(context);
 		if (!expectedTypes.isEmpty()) {
 			return computeJava8Proposals(resolveTypesFromProject(expectedTypes, context, monitor), context);
@@ -48,6 +53,12 @@ public class Java8ProposalComputer extends AbstractSmartProposalComputer impleme
 			final ASTResult result = findInAST(context, monitor);
 			return computeJava8Proposals(result.getExpectedTypes(), context);
 		}
+	}
+
+	@Override
+	public void sessionEnded() {
+		super.sessionEnded();
+		this.assistOptions = null;
 	}
 
 	private List<ICompletionProposal> computeJava8Proposals(Set<IType> types,
@@ -64,13 +75,13 @@ public class Java8ProposalComputer extends AbstractSmartProposalComputer impleme
 			elements.addAll(resolveInbuiltSuggestions(context));
 
 			@NonNull
-			Stream<Entry<IJavaElement, IMethod>> methodReferences = methodReferenceFinder.find(method,
-					elements,
-					context);
+			Stream<Entry<IJavaElement, IMethod>> methodReferences = !isPreceedMethodReferenceOpt(context)
+					? methodReferenceFinder.find(method, elements, context)
+					: Stream.empty();
 
 			return Stream.concat(methodReferences.map(e -> {
 				try {
-					return Proposals.toMethodReferenceProposal(e.getKey(), e.getValue(), context);
+					return Proposals.toMethodReferenceProposal(e.getKey(), e.getValue(), context, assistOptions);
 				} catch (JavaModelException ex) {
 					Log.error(ex);
 					return null;

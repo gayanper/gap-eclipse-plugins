@@ -15,11 +15,18 @@ final class ContextUtils {
 	}
 
 	public static int computeInvocationOffset(JavaContentAssistInvocationContext context) {
-		if (context.getCoreContext() != null && context.getCoreContext().getToken() != null
-				&& context.getCoreContext().getToken().length > 0) {
-			return context.getInvocationOffset() - context.getCoreContext().getToken().length;
+//		if (context.getCoreContext() != null && context.getCoreContext().getToken() != null
+//				&& context.getCoreContext().getToken().length > 0) {
+//			return context.getInvocationOffset() - context.getCoreContext().getToken().length;
+//		} else {
+//			return context.getInvocationOffset();
+//		}
+
+		if (context.getTextSelection() != null) {
+			return context.getTextSelection().getOffset();
 		} else {
 			return context.getInvocationOffset();
 		}
+
 	}
 }

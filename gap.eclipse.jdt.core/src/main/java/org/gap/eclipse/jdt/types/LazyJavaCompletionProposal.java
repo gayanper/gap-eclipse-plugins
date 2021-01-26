@@ -25,6 +25,8 @@ public abstract class LazyJavaCompletionProposal implements IJavaCompletionPropo
 
 	private Point selection;
 	private String replacementString;
+	private int cursorPosition;
+	private int offset;
 
 	protected LazyJavaCompletionProposal(String displayString, int relevance,
 			JavaContentAssistInvocationContext context) {
@@ -36,8 +38,23 @@ public abstract class LazyJavaCompletionProposal implements IJavaCompletionPropo
 	@Override
 	public void apply(IDocument document) {
 		try {
-			document.replace(context.getInvocationOffset(), ContextUtils.computeReplacementLength(context),
-					getReplacementString());
+			String token = Proposals.getToken(context);
+			String replacementStr = getReplacementString();
+			offset = ContextUtils.computeInvocationOffset(context);
+			int length = ContextUtils.computeReplacementLength(context);
+
+			if (!token.isEmpty()) {
+				if (replacementStr.startsWith(token)) {
+					replacementStr = replacementStr.substring(token.length());
+				} else {
+					offset -= token.length();
+				}
+			}
+			this.replacementString = replacementStr;
+
+			this.cursorPosition = offset + replacementStr.length();
+
+			document.replace(offset, length, replacementStr);
 
 			if (isSupportLinkMode()) {
 				LinkedModeModel model = computeLinkedModeModel(document);
@@ -71,11 +88,11 @@ public abstract class LazyJavaCompletionProposal implements IJavaCompletionPropo
 	}
 
 	protected int getReplacementOffset() {
-		return ContextUtils.computeInvocationOffset(context);
+		return offset;
 	}
 
 	protected int getCursorPosition() {
-		return getReplacementOffset() + getReplacementString().length();
+		return cursorPosition;
 	}
 
 	protected abstract String computeReplacementString();

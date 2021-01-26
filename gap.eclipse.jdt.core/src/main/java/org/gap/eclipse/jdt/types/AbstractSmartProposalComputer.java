@@ -20,6 +20,7 @@ import org.eclipse.jdt.core.Signature;
 import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTParser;
+import org.eclipse.jdt.internal.codeassist.impl.AssistOptions;
 import org.eclipse.jdt.internal.ui.javaeditor.JavaSourceViewer;
 import org.eclipse.jdt.ui.text.java.CompletionProposalCollector;
 import org.eclipse.jdt.ui.text.java.ContentAssistInvocationContext;
@@ -197,7 +198,7 @@ public abstract class AbstractSmartProposalComputer implements IJavaCompletionPr
 			JavaContentAssistInvocationContext context,
 			IProgressMonitor monitor);
 
-	protected boolean isPreceedSpaceNewKeyword(ContentAssistInvocationContext context) {
+	protected final boolean isPreceedSpaceNewKeyword(ContentAssistInvocationContext context) {
 		final int offset = context.getInvocationOffset();
 		final String keywordPrefix = "new ";
 		if (offset > keywordPrefix.length()) {
@@ -209,6 +210,24 @@ public abstract class AbstractSmartProposalComputer implements IJavaCompletionPr
 			}
 		}
 		return false;
+	}
+
+	protected final boolean isPreceedMethodReferenceOpt(ContentAssistInvocationContext context) {
+		final int offset = context.getInvocationOffset();
+		final String keywordPrefix = "::";
+		if (offset > keywordPrefix.length()) {
+			try {
+				return context.getDocument().get(offset - keywordPrefix.length(), keywordPrefix.length())
+						.equals(keywordPrefix);
+			} catch (BadLocationException e) {
+				CorePlugin.getDefault().logError(e.getMessage(), e);
+			}
+		}
+		return false;
+	}
+
+	protected final AssistOptions getAssistOptions(JavaContentAssistInvocationContext context) {
+		return new AssistOptions(context.getProject().getOptions(true));
 	}
 
 }

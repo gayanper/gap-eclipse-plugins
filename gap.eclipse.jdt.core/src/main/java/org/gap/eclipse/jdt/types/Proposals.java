@@ -1,5 +1,7 @@
 package org.gap.eclipse.jdt.types;
 
+import static org.eclipse.jdt.internal.codeassist.RelevanceConstants.*;
+
 import java.util.Arrays;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -14,6 +16,9 @@ import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.Signature;
+import org.eclipse.jdt.core.compiler.CharOperation;
+import org.eclipse.jdt.core.search.SearchPattern;
+import org.eclipse.jdt.internal.codeassist.impl.AssistOptions;
 import org.eclipse.jdt.internal.ui.text.java.LazyGenericTypeProposal;
 import org.eclipse.jdt.internal.ui.text.java.LazyJavaTypeCompletionProposal;
 import org.eclipse.jdt.ui.text.java.CompletionProposalCollector;
@@ -23,6 +28,9 @@ import org.gap.eclipse.jdt.CorePlugin;
 
 @SuppressWarnings({ "restriction" })
 public final class Proposals {
+	private static final int R_METHOD_REF = 9998;
+	private static final int R_LAMBDA = 10000;
+
 	private Proposals() {
 	}
 
@@ -31,23 +39,90 @@ public final class Proposals {
 		final String[] parameterNames = method.getParameterNames();
 		ICompletionProposal[] proposals = new ICompletionProposal[2];
 
-		proposals[0] = new LambdaCompletionProposal(parameterNames, true, 10000, context);
+		int relevance = R_LAMBDA;
+		if (hasToken(context)) {
+			relevance = R_DEFAULT;
+		}
 
-		proposals[1] = new LambdaCompletionProposal(parameterNames, false, 9999, context);
+		proposals[0] = new LambdaCompletionProposal(parameterNames, true, relevance, context);
+
+		proposals[1] = new LambdaCompletionProposal(parameterNames, false, --relevance, context);
 
 		return Stream.of(proposals);
 	}
 
 	static ICompletionProposal toMethodReferenceProposal(IJavaElement qualifier, IMethod method,
-			JavaContentAssistInvocationContext context) throws JavaModelException {
+			JavaContentAssistInvocationContext context, AssistOptions assistOptions) throws JavaModelException {
+		MethodRefCompletionProposal proposal;
 		if (qualifier instanceof IMethod) {
 			if (Flags.isStatic(method.getFlags())) {
-				return new MethodRefCompletionProposal(method.getDeclaringType().getElementName(),
-						method.getElementName(), 9998, context);
+				proposal = new MethodRefCompletionProposal(method.getDeclaringType().getElementName(),
+						method.getElementName(), getToken(context), context);
+			} else {
+				proposal = new MethodRefCompletionProposal("this", method.getElementName(), getToken(context), context);
 			}
-			return new MethodRefCompletionProposal("this", method.getElementName(), 9998, context);
+		} else {
+			proposal = new MethodRefCompletionProposal(qualifier.getElementName(), method.getElementName(),
+					getToken(context), context);
 		}
-		return new MethodRefCompletionProposal(qualifier.getElementName(), method.getElementName(), 9998, context);
+		proposal.setRelevance(
+				computeMethodRefRelavance(proposal.getDisplayString(), context, assistOptions));
+		proposal.setMatchRule(deriveMatchRule(proposal.getRelevance()));
+
+		return proposal;
+	}
+
+	private static int deriveMatchRule(int relevance) {
+		switch (relevance) {
+			case R_DEFAULT:
+			case R_METHOD_REF:
+				return -1;
+			default: {
+				switch(relevance - R_METHOD_REF) {
+					case R_CAMEL_CASE:
+						return SearchPattern.R_CAMELCASE_MATCH;
+					case R_SUBSTRING:
+						return SearchPattern.R_SUBSTRING_MATCH;
+					case R_SUBWORD:
+						return SearchPattern.R_SUBWORD_MATCH;
+					default:
+						return -1;
+						
+					}
+			}
+		}
+	}
+
+	private static int computeMethodRefRelavance(String proposalName, JavaContentAssistInvocationContext context,
+			AssistOptions options) {
+		if (hasToken(context)) {
+			char[] token = context.getCoreContext().getToken();
+			String tokenStr = String.valueOf(token);
+
+			if (options.camelCaseMatch && CharOperation.camelCaseMatch(token, proposalName.toCharArray())) {
+				return R_METHOD_REF + R_CAMEL_CASE;
+			} else if (options.substringMatch && proposalName.startsWith(tokenStr)) {
+				return R_METHOD_REF + R_SUBSTRING;
+			} else if (options.subwordMatch && proposalName.contains(tokenStr)) {
+				return R_METHOD_REF + R_SUBWORD;
+			} else {
+				return R_DEFAULT;
+			}
+		}
+		return R_METHOD_REF;
+	}
+
+	static String getToken(JavaContentAssistInvocationContext context) {
+		if (hasToken(context)) {
+			return String.valueOf(context.getCoreContext().getToken());
+		} else {
+			return "";
+		}
+	}
+
+	private static boolean hasToken(JavaContentAssistInvocationContext context) {
+		return context.getCoreContext() != null && context.getCoreContext().getToken() != null
+				&& context.getCoreContext().getToken().length > 0;
 	}
 
 	static ICompletionProposal toMethodProposal(IMethod method, JavaContentAssistInvocationContext context)
