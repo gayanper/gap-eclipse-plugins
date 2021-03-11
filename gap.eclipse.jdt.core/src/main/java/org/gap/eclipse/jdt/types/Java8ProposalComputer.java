@@ -1,6 +1,7 @@
 package org.gap.eclipse.jdt.types;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -13,11 +14,14 @@ import java.util.stream.Stream;
 
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.jdt.annotation.NonNull;
-import org.eclipse.jdt.core.Flags;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IMethod;
 import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.JavaModelException;
+import org.eclipse.jdt.core.dom.IBinding;
+import org.eclipse.jdt.core.dom.IMethodBinding;
+import org.eclipse.jdt.core.dom.ITypeBinding;
+import org.eclipse.jdt.core.dom.Modifier;
 import org.eclipse.jdt.internal.codeassist.impl.AssistOptions;
 import org.eclipse.jdt.ui.text.java.IJavaCompletionProposalComputer;
 import org.eclipse.jdt.ui.text.java.JavaContentAssistInvocationContext;
@@ -47,11 +51,18 @@ public class Java8ProposalComputer extends AbstractSmartProposalComputer impleme
 
 		assistOptions = getAssistOptions(context);
 		final Set<String> expectedTypes = resolveExpectedTypes(context);
+
 		if (!expectedTypes.isEmpty()) {
-			return computeJava8Proposals(resolveTypesFromProject(expectedTypes, context, monitor), context);
+			List<IBinding> bindings = resolveBindings(resolveTypesFromProject(expectedTypes, context, monitor),
+					context, monitor);
+			if(bindings.isEmpty()) {
+				return Collections.emptyList();
+			}
+			
+			return computeJava8Proposals(bindings, context);
 		} else {
 			final ASTResult result = findInAST(context, monitor);
-			return computeJava8Proposals(result.getExpectedTypes(), context);
+			return computeJava8Proposals(result.getExpectedTypeBindings(), context);
 		}
 	}
 
@@ -61,14 +72,15 @@ public class Java8ProposalComputer extends AbstractSmartProposalComputer impleme
 		this.assistOptions = null;
 	}
 
-	private List<ICompletionProposal> computeJava8Proposals(Set<IType> types,
+	private List<ICompletionProposal> computeJava8Proposals(Collection<? extends IBinding> bindings,
 			JavaContentAssistInvocationContext context) {
-		return types.stream().flatMap(this::functionalTypeMethod).flatMap(m -> toLambdaProposal(context, m))
+		return bindings.stream().filter(b -> b instanceof ITypeBinding).map(ITypeBinding.class::cast)
+				.flatMap(this::functionalTypeMethod).flatMap(e -> toLambdaProposal(context, e))
 				.collect(Collectors.toList());
 	}
 
 	private Stream<? extends ICompletionProposal> toLambdaProposal(JavaContentAssistInvocationContext context,
-			IMethod method) {
+			IMethodBinding binding) {
 		try {
 			List<IJavaElement> elements = new ArrayList<>(List.of(Optional.ofNullable(context.getCoreContext())
 					.map(c -> c.getVisibleElements(null)).orElse(new IJavaElement[0])));
@@ -76,7 +88,7 @@ public class Java8ProposalComputer extends AbstractSmartProposalComputer impleme
 
 			@NonNull
 			Stream<Entry<IJavaElement, IMethod>> methodReferences = !isPreceedMethodReferenceOpt(context)
-					? methodReferenceFinder.find(method, elements, context)
+					? methodReferenceFinder.find(binding, elements, context)
 					: Stream.empty();
 
 			return Stream.concat(methodReferences.map(e -> {
@@ -86,42 +98,37 @@ public class Java8ProposalComputer extends AbstractSmartProposalComputer impleme
 					Log.error(ex);
 					return null;
 				}
-			}).filter(Objects::nonNull), Proposals.toLambdaProposal(method, context));
+			}).filter(Objects::nonNull), Proposals.toLambdaProposal((IMethod) binding.getJavaElement(), context));
 		} catch (JavaModelException e) {
 			logError(e);
 			return Stream.empty();
 		}
 	}
 
-	private Stream<IMethod> functionalTypeMethod(IType type) {
-		try {
-			if (!type.isInterface()) {
-				return Stream.empty();
-			}
-
-			List<IMethod> candidates = Stream.of(type.getMethods()).filter(m -> {
-				try {
-					return !Flags.isStatic(m.getFlags()) && !Flags.isDefaultMethod(m.getFlags()) && notIgnoredMethod(m);
-				} catch (JavaModelException e) {
-					logError(e);
-					return false;
-				}
-			}).collect(Collectors.toList());
-
-			if (candidates.size() == 1) {
-				return candidates.stream();
-			}
-
-			return Stream.empty();
-		} catch (JavaModelException e) {
-			logError(e);
+	private Stream<IMethodBinding> functionalTypeMethod(ITypeBinding binding) {
+		if (!binding.isInterface()) {
 			return Stream.empty();
 		}
+
+		List<IMethodBinding> candidates = Stream.of(binding.getDeclaredMethods()).filter(m -> {
+			try {
+				return !Modifier.isStatic(m.getModifiers()) && !Modifier.isDefault(m.getModifiers())
+						&& notIgnoredMethod(m);
+			} catch (JavaModelException e) {
+				logError(e);
+				return false;
+			}
+		}).collect(Collectors.toList());
+
+		if (candidates.size() == 1) {
+			return candidates.stream();
+		}
+		return Stream.empty();
 	}
 
-	private boolean notIgnoredMethod(IMethod method) throws JavaModelException {
-		String name = method.getElementName();
-		String signature = method.getSignature();
+	private boolean notIgnoredMethod(IMethodBinding method) throws JavaModelException {
+		String name = method.getName();
+		String signature = ((IMethod) method.getJavaElement()).getSignature();
 		return this.methodSignaturesToIgnore.stream()
 				.noneMatch(e -> e.getKey().equals(name) && e.getValue().equals(signature));
 	}

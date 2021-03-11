@@ -15,6 +15,8 @@ import org.eclipse.jdt.core.IMethod;
 import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.Signature;
+import org.eclipse.jdt.core.dom.IMethodBinding;
+import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.internal.corext.util.JavaModelUtil;
 import org.eclipse.jdt.ui.text.java.JavaContentAssistInvocationContext;
 import org.gap.eclipse.jdt.common.Log;
@@ -22,14 +24,9 @@ import org.gap.eclipse.jdt.common.Log;
 @SuppressWarnings("restriction")
 public class MethodReferenceFinder {
 
-	public @NonNull Stream<Entry<IJavaElement, IMethod>> find(@NonNull IMethod lambdaMethod,
-			@NonNull List<IJavaElement> visibleElements,
-			@NonNull JavaContentAssistInvocationContext context) throws JavaModelException {
-		String lambdaSignature = lambdaMethod.getSignature();
-		if (context.getCoreContext() == null) {
-			return Stream.empty();
-		}
-
+	public @NonNull Stream<Entry<IJavaElement, IMethod>> find(IMethodBinding binding,
+			@NonNull List<IJavaElement> visibleElements, @NonNull JavaContentAssistInvocationContext context)
+			throws JavaModelException {
 		final boolean isInStaticContext = isInStaticContext(context.getCoreContext().getEnclosingElement());
 
 		return visibleElements.stream().filter(this::isAcceptableElement).flatMap(e -> {
@@ -46,26 +43,36 @@ public class MethodReferenceFinder {
 					methods = methodsFromType(context, e, localVariable.getTypeSignature(),
 							localVariable.getTypeRoot().findPrimaryType());
 				} else if (e instanceof IType) {
-					methods = Stream.of(((IType) e).getMethods()).map(m -> Map.entry(e, m));
+					// collect static methods only regardless our context
+					methods = Stream.of(((IType) e).getMethods()).filter(this::isStatic).map(m -> Map.entry(e, m));
 				} else if (e instanceof IMethod) {
 					methods = Stream.of(Map.entry(e, (IMethod) e));
 				} else {
 					methods = Stream.empty();
 				}
 
-				return methods.filter(me -> {
+				return methods.filter(me -> isStatic(me.getValue()) == isInStaticContext).filter(m -> {
 					try {
-						return Flags.isStatic(me.getValue().getFlags()) == isInStaticContext;
+						return Methods.notIgnoredMethod(m.getValue());
 					} catch (JavaModelException ex) {
 						Log.error(ex);
 						return false;
 					}
-				}).filter(me -> isMatchingMethod(lambdaSignature, me.getValue()));
+				}).filter(me -> isMatchingMethod(binding, me.getValue()));
 			} catch (JavaModelException ex) {
 				Log.error(ex);
 			}
 			return Stream.empty();
 		});
+	}
+
+	private boolean isStatic(IMethod m) {
+		try {
+			return Flags.isStatic(m.getFlags());
+		} catch (JavaModelException e) {
+			Log.error(e);
+			return false;
+		}
 	}
 
 	protected Stream<Entry<IJavaElement, IMethod>> methodsFromType(JavaContentAssistInvocationContext context,
@@ -90,9 +97,25 @@ public class MethodReferenceFinder {
 		return false;
 	}
 
-	private boolean isMatchingMethod(String lambdaSignature, IMethod m) {
+	private boolean isMatchingMethod(IMethodBinding binding, IMethod m) {
 		try {
-			return lambdaSignature.equals(m.getSignature());
+			if(binding.getParameterTypes().length != m.getParameters().length) {
+				return false;
+			}
+			
+			for(int i = 0; i < binding.getParameterTypes().length; i++) {
+				ITypeBinding tb = binding.getParameterTypes()[i];
+				if (tb.isWildcardType() && tb.isUpperbound() && !tb.getBound().getName()
+						.equals(Signature.getSignatureSimpleName(m.getParameterTypes()[i]))) {
+					return false;
+				}
+
+				if (!tb.isTypeVariable() && !(tb.isWildcardType() && tb.isUpperbound())
+						&& !tb.getName().equals(Signature.getSignatureSimpleName(m.getParameterTypes()[i]))) {
+					return false;
+				}
+			}
+			return binding.getReturnType().getName().equals(Signature.getSignatureSimpleName(m.getReturnType()));
 		} catch (JavaModelException e) {
 			Log.error(e);
 			return false;

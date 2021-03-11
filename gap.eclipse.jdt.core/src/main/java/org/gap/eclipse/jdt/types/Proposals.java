@@ -1,9 +1,10 @@
 package org.gap.eclipse.jdt.types;
 
-import static org.eclipse.jdt.internal.codeassist.RelevanceConstants.*;
+import static org.eclipse.jdt.internal.codeassist.RelevanceConstants.R_CAMEL_CASE;
+import static org.eclipse.jdt.internal.codeassist.RelevanceConstants.R_DEFAULT;
+import static org.eclipse.jdt.internal.codeassist.RelevanceConstants.R_SUBSTRING;
+import static org.eclipse.jdt.internal.codeassist.RelevanceConstants.R_SUBWORD;
 
-import java.util.Arrays;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.eclipse.jdt.core.CompletionProposal;
@@ -19,8 +20,10 @@ import org.eclipse.jdt.core.Signature;
 import org.eclipse.jdt.core.compiler.CharOperation;
 import org.eclipse.jdt.core.search.SearchPattern;
 import org.eclipse.jdt.internal.codeassist.impl.AssistOptions;
+import org.eclipse.jdt.internal.ui.text.java.FillArgumentNamesCompletionProposalCollector;
 import org.eclipse.jdt.internal.ui.text.java.LazyGenericTypeProposal;
 import org.eclipse.jdt.internal.ui.text.java.LazyJavaTypeCompletionProposal;
+import org.eclipse.jdt.ui.PreferenceConstants;
 import org.eclipse.jdt.ui.text.java.CompletionProposalCollector;
 import org.eclipse.jdt.ui.text.java.JavaContentAssistInvocationContext;
 import org.eclipse.jface.text.contentassist.ICompletionProposal;
@@ -133,20 +136,21 @@ public final class Proposals {
 		String fullyQualifiedName = method.getDeclaringType().getElementName().concat(".")
 				.concat(method.getElementName());
 		proposal.setName(method.getElementName().toCharArray());
-		proposal.setCompletion(createMethodCompletion(method));
+		proposal.setCompletion(new char[] { '(', ')' });
+		proposal.setParameterNames(computeParameterNames(method));
 		proposal.setDeclarationSignature(
 				Signature.createTypeSignature(method.getDeclaringType().getFullyQualifiedName(), true).toCharArray());
 		proposal.setFlags(method.getFlags());
 		float relevance = context.getHistoryRelevance(fullyQualifiedName);
 		proposal.setRelevance((int) (100 * (relevance < 0.1 ? 0.1 : relevance)));
-		proposal.setReplaceRange(ContextUtils.computeInvocationOffset(context), ContextUtils.computeEndOffset(context));
+		proposal.setReplaceRange(ContextUtils.computeInvocationOffset(context) - getToken(context).length(),
+				ContextUtils.computeEndOffset(context));
 		proposal.setSignature(method.getSignature().replaceAll("/", ".").toCharArray());
 		proposal.setRequiredProposals(
 				new CompletionProposal[] { createImportProposal(context, method.getDeclaringType()) });
 
-		CompletionProposalCollector collector = new CompletionProposalCollector(context.getCompilationUnit());
-		collector.setInvocationContext(context);
-		collector.acceptContext(context.getCoreContext());
+		CompletionProposalCollector collector = createCollector(context);
+		collector.setIgnored(CompletionProposal.METHOD_REF, false);
 		collector.accept(proposal);
 
 		return collector.getJavaCompletionProposals()[0];
@@ -155,25 +159,30 @@ public final class Proposals {
 	static ICompletionProposal toConstructorProposal(IMethod method, JavaContentAssistInvocationContext context)
 			throws JavaModelException {
 
-		CompletionProposal proposal = CompletionProposal.create(CompletionProposal.CONSTRUCTOR_INVOCATION,
-				context.getInvocationOffset());
+		ConstructorCompletion proposal = new ConstructorCompletion(context.getInvocationOffset());
+		char[][] parameterNames = computeParameterNames(method);
+		proposal.setParameterNames(parameterNames);
 		String fullyQualifiedName = method.getDeclaringType().getElementName().concat(".")
 				.concat(method.getElementName());
 		proposal.setName(method.getElementName().toCharArray());
-		proposal.setCompletion(createMethodCompletion(method));
+		proposal.setDeclarationPackageName(
+				method.getDeclaringType().getPackageFragment().getElementName().toCharArray());
+		proposal.setDeclarationTypeName(method.getDeclaringType().getElementName().toCharArray());
+		proposal.setIsContructor(true);
+		proposal.setCompletion(CharOperation.concat('(', CharOperation.concatWith(parameterNames, ','), ')'));
 		proposal.setDeclarationSignature(
 				Signature.createTypeSignature(method.getDeclaringType().getFullyQualifiedName(), true).toCharArray());
 		proposal.setFlags(method.getFlags());
 		float relevance = context.getHistoryRelevance(fullyQualifiedName);
 		proposal.setRelevance((int) (100 * (relevance < 0.1 ? 0.1 : relevance)));
-		proposal.setReplaceRange(ContextUtils.computeInvocationOffset(context), ContextUtils.computeEndOffset(context));
+		proposal.setReplaceRange(ContextUtils.computeInvocationOffset(context) - getToken(context).length(),
+				ContextUtils.computeEndOffset(context));
 		proposal.setSignature(method.getSignature().replaceAll("/", ".").toCharArray());
 		proposal.setRequiredProposals(
 				new CompletionProposal[] { createTypeProposal(method.getDeclaringType(), context) });
 
-		CompletionProposalCollector collector = new CompletionProposalCollector(context.getCompilationUnit());
-		collector.setInvocationContext(context);
-		collector.acceptContext(context.getCoreContext());
+		CompletionProposalCollector collector = createCollector(context);
+		collector.setIgnored(CompletionProposal.CONSTRUCTOR_INVOCATION, false);
 		collector.accept(proposal);
 
 		return collector.getJavaCompletionProposals()[0];
@@ -259,14 +268,24 @@ public final class Proposals {
 		return proposal;
 	}
 
-	private static char[] createMethodCompletion(IMethod method) throws JavaModelException {
-		StringBuilder builder = new StringBuilder();
-		builder.append(method.getDeclaringType().getElementName());
-		builder.append(".").append(method.getElementName());
-		builder.append("(");
-		builder.append(Arrays.stream(method.getParameterNames()).collect(Collectors.joining(",")));
-		builder.append(")");
-		return builder.toString().toCharArray();
+	private static char[][] computeParameterNames(IMethod method) throws JavaModelException {
+		String[] parameterNames = method.getParameterNames();
+		char[][] names = new char[parameterNames.length][];
+		for (int i = 0; i < parameterNames.length; i++) {
+			names[i] = parameterNames[i].toCharArray();
+		}
+		return names;
 	}
 
+	private static CompletionProposalCollector createCollector(JavaContentAssistInvocationContext context) {
+		CompletionProposalCollector collector;
+		if (PreferenceConstants.getPreferenceStore().getBoolean(PreferenceConstants.CODEASSIST_FILL_ARGUMENT_NAMES)) {
+			collector = new FillArgumentNamesCompletionProposalCollector(context);
+		} else {
+			collector = new CompletionProposalCollector(context.getCompilationUnit());
+		}
+		collector.setInvocationContext(context);
+		collector.acceptContext(context.getCoreContext());
+		return collector;
+	}
 }

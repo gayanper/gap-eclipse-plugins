@@ -48,6 +48,7 @@ public abstract class LazyJavaCompletionProposal implements IJavaCompletionPropo
 					replacementStr = replacementStr.substring(token.length());
 				} else {
 					offset -= token.length();
+					length = Math.max(length, token.length());
 				}
 			}
 			this.replacementString = replacementStr;
