@@ -17,9 +17,12 @@ import org.eclipse.jface.text.contentassist.ICompletionProposal;
 import org.eclipse.swt.SWT;
 import org.eclipse.ui.IEditorPart;
 
+import com.google.common.base.Joiner;
+
 @SuppressWarnings("restriction")
 public class ComputerTestBase {
 
+	private static final String IMPORT = "//import;\n";
 	protected IJavaProject project;
 	protected IPackageFragmentRoot javaSrc;
 	protected IPackageFragment pkg;
@@ -51,10 +54,24 @@ public class ComputerTestBase {
 		return this.proposalComputer.computeCompletionProposals(ctx, null);
 	}
 
-	protected String computeExpected(StringBuilder code, String replace, String expectedCompletion) {
+	protected String computeExpected(StringBuilder code, String replace, String expectedCompletion, String... imports) {
 		int offset = code.indexOf(replace);
 		code.delete(offset, offset + replace.length()).insert(offset, expectedCompletion);
+
+		if (imports.length > 0) {
+			offset = code.indexOf(IMPORT);
+			code.delete(offset, offset + IMPORT.length()).insert(offset,
+					"import ".concat(Joiner.on(";\nimport ").join(imports).concat(";\n")));
+		}
+
 		return code.toString();
+	}
+
+	protected StringBuilder withoutImport(StringBuilder code) {
+		StringBuilder newCode = new StringBuilder(code.toString());
+		int offset = newCode.indexOf(IMPORT);
+		newCode.delete(offset, offset + IMPORT.length());
+		return newCode;
 	}
 
 	protected String computeActual(ICompletionProposal proposal, ICompilationUnit cu, int completionIndex)
