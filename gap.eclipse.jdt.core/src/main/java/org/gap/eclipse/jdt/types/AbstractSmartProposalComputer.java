@@ -19,8 +19,8 @@ import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.Signature;
 import org.eclipse.jdt.core.dom.AST;
-import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTParser;
+import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.IBinding;
 import org.eclipse.jdt.internal.codeassist.impl.AssistOptions;
 import org.eclipse.jdt.internal.ui.javaeditor.JavaSourceViewer;
@@ -140,17 +140,18 @@ public abstract class AbstractSmartProposalComputer implements IJavaCompletionPr
 	}
 
 	protected final ASTResult findInAST(JavaContentAssistInvocationContext context, IProgressMonitor monitor) {
-		ASTParser parser = ASTParser.newParser(AST.JLS_Latest);
-		parser.setSource(context.getCompilationUnit());
-		parser.setProject(context.getProject());
-		parser.setResolveBindings(true);
-		parser.setStatementsRecovery(true);
-		parser.setBindingsRecovery(true);
-		ASTNode ast = parser.createAST(monitor);
-		CompletionASTVistor visitor = new CompletionASTVistor(context);
-		ast.accept(visitor);
-		return new ASTResult(visitor.getExpectedTypes(), visitor.getExpectedTypeBindings(),
-				visitor.getExpectedTypeEntries());
+		ICompilationUnit compilationUnit = context.getCompilationUnit();
+		try {
+			CompilationUnit ast = CompletionASTVistor.createParsedUnitForCorrectedSource(compilationUnit.getElementName(),
+					compilationUnit.getSource(), context.getProject(), monitor);
+			CompletionASTVistor visitor = new CompletionASTVistor(context);
+			ast.accept(visitor);
+			return new ASTResult(visitor.getExpectedTypes(), visitor.getExpectedTypeBindings(),
+					visitor.getExpectedTypeEntries(), visitor.isInsideLambda());
+		} catch (JavaModelException e) {
+			CorePlugin.getDefault().logError("Failed to find in AST", e);
+			return new ASTResult(Collections.emptySet(), Collections.emptySet(), Collections.emptySet(), false);
+		}
 	}
 
 	@Override

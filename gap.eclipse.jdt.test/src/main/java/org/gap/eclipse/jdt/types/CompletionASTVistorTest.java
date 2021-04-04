@@ -2,6 +2,7 @@ package org.gap.eclipse.jdt.types;
 
 import static org.gap.eclipse.jdt.ProjectHelper.getCompilationUnit;
 import static org.gap.eclipse.jdt.ProjectHelper.getCompletionIndex;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -12,9 +13,7 @@ import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IPackageFragment;
 import org.eclipse.jdt.core.IPackageFragmentRoot;
-import org.eclipse.jdt.core.dom.AST;
-import org.eclipse.jdt.core.dom.ASTNode;
-import org.eclipse.jdt.core.dom.ASTParser;
+import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.internal.ui.javaeditor.EditorUtility;
 import org.eclipse.jdt.testplugin.JavaProjectHelper;
 import org.eclipse.jdt.ui.text.java.JavaContentAssistInvocationContext;
@@ -23,6 +22,7 @@ import org.eclipse.jface.text.ITextViewer;
 import org.eclipse.jface.text.TextViewer;
 import org.eclipse.swt.SWT;
 import org.eclipse.ui.IEditorPart;
+import org.gap.eclipse.jdt.ProjectHelper;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -69,6 +69,29 @@ public class CompletionASTVistorTest {
 
 		assertNotNull("Expected Type is null", visitor.getExpectedType());
 		assertTrue("Expected Type is List", "java.util.List".equals(visitor.getExpectedType().getFullyQualifiedName()));
+	}
+
+	@Test
+	public void getExpectedTypes_OnParameter_InStreamOnSecondOperation_ExpectNoErrors() throws Exception {
+		StringBuilder code = new StringBuilder();
+		code.append("package completion.test;\n");
+		code.append("import java.util.stream.Stream;\n");
+		code.append("public class ASTFileL {\n");
+		code.append("  public void foo() {\n");
+//		code.append(" Stream.of(\"1\").filter(i -> i.isEmpty()).map($)\n");
+		code.append(" Stream.of(\"1\").parallel().map($)\n");
+//		code.append(" Stream.of($)\n");
+		code.append("  }\n");
+		code.append("}\n");
+
+		int index = getCompletionIndex(code);
+		ICompilationUnit cu = getCompilationUnit(pkg, code, "ASTFileL.java");
+
+		CompletionASTVistor visitor = getVisitedVistor(cu, index);
+
+		assertNotNull("Expected Type is null", visitor.getExpectedType());
+		assertEquals("Expected Type is List",
+				"java.util.function.Function", visitor.getExpectedType().getFullyQualifiedName());
 	}
 
 	@Test
@@ -325,7 +348,7 @@ public class CompletionASTVistorTest {
 	}
 	
 	@Test
-	public void getExpectedTypes_InSideLambdaBlock_ExpectZeroTypes() throws Exception {
+	public void getExpectedTypes_InsideLambdaBlock_ExpectZeroTypes() throws Exception {
 		StringBuilder code = new StringBuilder();
 		code.append("package completion.test;\n");
 		code.append("import java.util.stream.Stream;\n");
@@ -340,7 +363,8 @@ public class CompletionASTVistorTest {
 
 		CompletionASTVistor visitor = getVisitedVistor(cu, index);
 
-		assertTrue("Expected Types are not empty", visitor.getExpectedTypes().isEmpty());
+		assertTrue("Visitor state is not inside lambda", visitor.isInsideLambda());
+		assertTrue("Expected Types are empty", visitor.getExpectedTypes().isEmpty());
 	}
 
 	@Test
@@ -368,13 +392,13 @@ public class CompletionASTVistorTest {
 		viewer.setDocument(new Document(cu.getSource()));
 		JavaContentAssistInvocationContext ctx = new JavaContentAssistInvocationContext(viewer, index, editor);
 		CompletionASTVistor visitor = new CompletionASTVistor(ctx);
-		ASTParser parser = ASTParser.newParser(AST.JLS13);
-		parser.setSource(ctx.getCompilationUnit());
-		parser.setProject(ctx.getProject());
-		parser.setResolveBindings(true);
-		parser.setStatementsRecovery(true);
-		parser.setBindingsRecovery(true);
-		ASTNode ast = parser.createAST(new NullProgressMonitor());
+
+		ProjectHelper.waitForAutoBuild();
+		ProjectHelper.waitUntilIndexesReady();
+
+		CompilationUnit ast = CompletionASTVistor.createParsedUnitForCorrectedSource(cu.getElementName(),
+				cu.getSource(),
+				cu.getJavaProject(), new NullProgressMonitor());
 		ast.accept(visitor);
 		return visitor;
 	}

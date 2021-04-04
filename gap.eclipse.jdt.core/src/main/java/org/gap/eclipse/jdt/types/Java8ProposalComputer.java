@@ -61,8 +61,12 @@ public class Java8ProposalComputer extends AbstractSmartProposalComputer impleme
 			
 			return computeJava8Proposals(bindings, context);
 		} else {
+			// can remove after fixing https://bugs.eclipse.org/bugs/show_bug.cgi?id=572359
 			final ASTResult result = findInAST(context, monitor);
-			return computeJava8Proposals(result.getExpectedTypeBindings(), context);
+			if (!result.isInsideLambda()) {
+				return computeJava8Proposals(result.getExpectedTypeBindings(), context);
+			}
+			return Collections.emptyList();
 		}
 	}
 

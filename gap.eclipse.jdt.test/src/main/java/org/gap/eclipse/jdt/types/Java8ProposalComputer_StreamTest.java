@@ -15,7 +15,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-public class Java8ProposalComputerTest extends ComputerTestBase {
+public class Java8ProposalComputer_StreamTest extends ComputerTestBase {
 	
 	@Before
 	public void before() throws CoreException {
@@ -28,14 +28,13 @@ public class Java8ProposalComputerTest extends ComputerTestBase {
 	}
 
 	@Test
-	public void compute_LambdaSuggestion_On_FunctionalTypeParameter() throws Exception {
+	public void compute_LambdaSuggestion_OnStreams_TerminalOpt() throws Exception {
 		StringBuilder code = new StringBuilder();
 		code.append("package completion.test;\n");
+		code.append("import java.util.stream.Stream;\n");
 		code.append("public class Java8 {\n");
-		code.append("  public void test(java.util.function.Predicate<String> p) {\n");
-		code.append("  }\n");
 		code.append("  public void foo() {\n");
-		code.append("    test($)\n");
+		code.append("    Stream.of(\"1\").forEach($)\n");
 		code.append("  }\n");
 		code.append("}\n");
 		
@@ -50,72 +49,13 @@ public class Java8ProposalComputerTest extends ComputerTestBase {
 	}
 
 	@Test
-	public void compute_LambdaSuggestionWithSameClassMethodReferences_On_FunctionalTypeParameter() throws Exception {
+	public void compute_LambdaSuggestion_OnStreams_TerminalOpt_ShouldaApply() throws Exception {
 		StringBuilder code = new StringBuilder();
 		code.append("package completion.test;\n");
+		code.append("import java.util.stream.Stream;\n");
 		code.append("public class Java8 {\n");
-		code.append("  public void test(java.util.function.Predicate<String> p) {\n");
-		code.append("  }\n");
-		code.append("  private boolean isEmpty(String value) { \n");
-		code.append("  	 return false;");
-		code.append("  }\n");
-		code.append("  protected boolean isEmptyProt(String value) { \n");
-		code.append("  	 return false;");
-		code.append("  }\n");
-		code.append("  public boolean isEmptyPub(String value) { \n");
-		code.append("  	 return false;");
-		code.append("  }\n");
 		code.append("  public void foo() {\n");
-		code.append("    test($)\n");
-		code.append("  }\n");
-		code.append("}\n");
-
-		int index = getCompletionIndex(code);
-		ICompilationUnit cu = getCompilationUnit(pkg, code, "Java8.java");
-		List<ICompletionProposal> completions = computeCompletionProposals(cu, index);
-
-		List<String> expected = Arrays.asList("(.) ->", "(.) -> {}", "this::isEmptyPub", "this::isEmptyProt",
-				"this::isEmpty");
-
-		List<String> actual = completions.stream().map(this::convert).sorted(this::compare)
-				.map(c -> c.getDisplayString()).collect(Collectors.toList());
-		assertEquals(actual.toString(), expected, actual);
-	}
-
-	@Test
-	public void compute_Filter_LambdaSuggestion_On_FunctionalTypeParameter() throws Exception {
-		StringBuilder code = new StringBuilder();
-		code.append("package completion.test;\n");
-		code.append("public class Java8 {\n");
-		code.append("  public void test(java.util.function.Predicate<String> p) {\n");
-		code.append("  }\n");
-		code.append("  private boolean isEmpty(String value) { \n");
-		code.append("  	 return false;");
-		code.append("  }\n");
-		code.append("  public void foo() {\n");
-		code.append("    test(isEmp$)\n");
-		code.append("  }\n");
-		code.append("}\n");
-
-		int index = getCompletionIndex(code);
-		ICompilationUnit cu = getCompilationUnit(pkg, code, "Java8.java");
-		List<ICompletionProposal> completions = computeCompletionProposals(cu, index);
-
-		List<String> expected = Arrays.asList("this::isEmpty");
-		List<String> actual = completions.stream().map(this::convert).sorted(this::compare)
-				.map(c -> c.getDisplayString()).limit(1).collect(Collectors.toList());
-		assertEquals(actual.toString(), expected, actual);
-	}
-
-	@Test
-	public void compute_LambdaSuggestion_ShouldApply() throws Exception {
-		StringBuilder code = new StringBuilder();
-		code.append("package completion.test;\n");
-		code.append("public class Java8 {\n");
-		code.append("  public void test(java.util.function.Predicate<String> p) {\n");
-		code.append("  }\n");
-		code.append("  public void foo() {\n");
-		code.append("    test($)\n");
+		code.append("    Stream.of(\"1\").forEach($)\n");
 		code.append("  }\n");
 		code.append("}\n");
 
@@ -131,17 +71,13 @@ public class Java8ProposalComputerTest extends ComputerTestBase {
 	}
 
 	@Test
-	public void compute_LambdaSuggestion_MethodRef_ShouldAppy() throws Exception {
+	public void compute_LambdaSuggestion_OnStreams_NonTerminalOpt() throws Exception {
 		StringBuilder code = new StringBuilder();
 		code.append("package completion.test;\n");
+		code.append("import java.util.stream.Stream;\n");
 		code.append("public class Java8 {\n");
-		code.append("  public void test(java.util.function.Predicate<String> p) {\n");
-		code.append("  }\n");
-		code.append("  private boolean isEmpty(String value) { \n");
-		code.append("  	 return false;");
-		code.append("  }\n");
 		code.append("  public void foo() {\n");
-		code.append("    test(isEmp$)\n");
+		code.append("    Stream.of(\"1\").filter($)\n");
 		code.append("  }\n");
 		code.append("}\n");
 
@@ -149,19 +85,20 @@ public class Java8ProposalComputerTest extends ComputerTestBase {
 		ICompilationUnit cu = getCompilationUnit(pkg, code, "Java8.java");
 		List<ICompletionProposal> completions = computeCompletionProposals(cu, index);
 
-		String actual = computeActual(completions.get(0), cu, index);
-		String expected = computeExpected(code, "isEmp$", "this::isEmpty");
+		List<String> expected = Arrays.asList("(.) ->", "(.) -> {}");
 
-		assertEquals("this::isEmpty was not applied correctly", expected, actual);
+		List<String> actual = completions.stream().map(c -> c.getDisplayString()).collect(Collectors.toList());
+		assertEquals(actual.toString(), expected, actual);
 	}
 
 	@Test
-	public void compute_LambdaSuggestion_On_FunctionalTypeVariable() throws Exception {
+	public void compute_LambdaSuggestion_OnStreams_NonTerminalOpt_ShouldaApply() throws Exception {
 		StringBuilder code = new StringBuilder();
 		code.append("package completion.test;\n");
+		code.append("import java.util.stream.Stream;\n");
 		code.append("public class Java8 {\n");
-		code.append("  private java.util.function.Supplier provider = $\n");
 		code.append("  public void foo() {\n");
+		code.append("    Stream.of(\"1\").filter($)\n");
 		code.append("  }\n");
 		code.append("}\n");
 
@@ -169,11 +106,54 @@ public class Java8ProposalComputerTest extends ComputerTestBase {
 		ICompilationUnit cu = getCompilationUnit(pkg, code, "Java8.java");
 		List<ICompletionProposal> completions = computeCompletionProposals(cu, index);
 
-		List<String> expected = Arrays.asList("() ->", "() -> {}");
+		String actual = computeActual(completions.stream().map(this::convert).sorted(this::compare).findFirst().get(),
+				cu, index);
+		String expected = computeExpected(code, "$", "arg0 -> ");
 
-		List<String> actual = completions.stream().map(this::convert).sorted(this::compare)
-				.map(c -> c.getDisplayString()).collect(Collectors.toList());
+		assertEquals("(.) -> was not applied correctly", expected, actual);
+	}
+
+	@Test
+	public void compute_LambdaSuggestion_OnStreams_SecondNonTerminalOpt() throws Exception {
+		StringBuilder code = new StringBuilder();
+		code.append("package completion.test;\n");
+		code.append("import java.util.stream.Stream;\n");
+		code.append("public class Java8 {\n");
+		code.append("  public void foo() {\n");
+		code.append("    Stream.of(\"1\").filter(i -> i.isEmpty()).map($);\n");
+		code.append("  }\n");
+		code.append("}\n");
+
+		int index = getCompletionIndex(code);
+		ICompilationUnit cu = getCompilationUnit(pkg, code, "Java8.java");
+		List<ICompletionProposal> completions = computeCompletionProposals(cu, index);
+
+		List<String> expected = Arrays.asList("(.) ->", "(.) -> {}");
+
+		List<String> actual = completions.stream().map(c -> c.getDisplayString()).collect(Collectors.toList());
 		assertEquals(actual.toString(), expected, actual);
+	}
+
+	@Test
+	public void compute_LambdaSuggestion_OnStreams_SecondNonTerminalOpt_ShouldaApply() throws Exception {
+		StringBuilder code = new StringBuilder();
+		code.append("package completion.test;\n");
+		code.append("import java.util.stream.Stream;\n");
+		code.append("public class Java8 {\n");
+		code.append("  public void foo() {\n");
+		code.append("    Stream.of(\"1\").filter(i -> i.isEmpty()).map($)\n");
+		code.append("  }\n");
+		code.append("}\n");
+
+		int index = getCompletionIndex(code);
+		ICompilationUnit cu = getCompilationUnit(pkg, code, "Java8.java");
+		List<ICompletionProposal> completions = computeCompletionProposals(cu, index);
+
+		String actual = computeActual(completions.stream().map(this::convert).sorted(this::compare).findFirst().get(),
+				cu, index);
+		String expected = computeExpected(code, "$", "arg0 -> ");
+
+		assertEquals("(.) -> was not applied correctly", expected, actual);
 	}
 
 	private LazyJavaCompletionProposal convert(ICompletionProposal proposal) {

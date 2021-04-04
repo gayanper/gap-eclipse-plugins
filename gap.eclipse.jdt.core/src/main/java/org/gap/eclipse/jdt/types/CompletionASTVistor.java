@@ -5,20 +5,28 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
+import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IType;
+import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.Signature;
+import org.eclipse.jdt.core.compiler.IProblem;
+import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTNode;
+import org.eclipse.jdt.core.dom.ASTParser;
 import org.eclipse.jdt.core.dom.ASTVisitor;
 import org.eclipse.jdt.core.dom.ClassInstanceCreation;
+import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.Expression;
 import org.eclipse.jdt.core.dom.IMethodBinding;
 import org.eclipse.jdt.core.dom.ITypeBinding;
@@ -48,10 +56,12 @@ class CompletionASTVistor extends ASTVisitor {
 	private Function<IMethodBinding, List<ITypeBinding>> parameterSupplier;
 	private Supplier<IMethodBinding> bindingSupplier;
 	private boolean searchInOverloadMethods;
+	private boolean insideLambda = false;
 
 	public CompletionASTVistor(JavaContentAssistInvocationContext context) {
 		this(context, true);
 	}
+
 	public CompletionASTVistor(JavaContentAssistInvocationContext context, boolean searchInOverloadMethods) {
 		this.searchInOverloadMethods = searchInOverloadMethods;
 		this.typeEntries = new HashSet<>();
@@ -78,8 +88,8 @@ class CompletionASTVistor extends ASTVisitor {
 
 	@Override
 	public boolean visit(LambdaExpression node) {
-		resetVistor();
-		return true;
+		return visitNode(node, Suppliers.memoize(node::parameters), method -> Arrays.asList(method.getParameterTypes()),
+				Suppliers.memoize(node::resolveMethodBinding));
 	}
 
 	@Override
@@ -98,7 +108,8 @@ class CompletionASTVistor extends ASTVisitor {
 		this.bindingSupplier = null;
 	}
 
-	private boolean visitNode(Expression node, Supplier<List<ASTNode>> argumentSupplier, Function<IMethodBinding, List<ITypeBinding>> parameterSupplier, Supplier<IMethodBinding> bindingSupplier) {
+	private boolean visitNode(Expression node, Supplier<List<ASTNode>> argumentSupplier,
+			Function<IMethodBinding, List<ITypeBinding>> parameterSupplier, Supplier<IMethodBinding> bindingSupplier) {
 		final CodeRange current = new CodeRange(node.getStartPosition(), node.getStartPosition() + node.getLength(),
 				node);
 
@@ -113,6 +124,7 @@ class CompletionASTVistor extends ASTVisitor {
 			this.argumentSupplier = argumentSupplier;
 			this.parameterSupplier = parameterSupplier;
 			this.bindingSupplier = bindingSupplier;
+			this.insideLambda = (node instanceof LambdaExpression);
 
 			return true;
 		}
@@ -127,12 +139,13 @@ class CompletionASTVistor extends ASTVisitor {
 			lastFoundNode = null;
 		}
 	}
-	
+
 	private void processNodeForType(ASTNode node) {
 		Set<ITypeBinding> typesAtOffset = findParameterTypeAtOffset(getDeclaringType(node));
 		typesAtOffset.stream().map(t -> {
 			try {
-				return new AbstractMap.SimpleImmutableEntry<>(t, project.findType(Signature.getTypeErasure(t.getQualifiedName())));
+				return new AbstractMap.SimpleImmutableEntry<>(t,
+						project.findType(Signature.getTypeErasure(t.getQualifiedName())));
 			} catch (JavaModelException | IllegalArgumentException e) {
 				CorePlugin.getDefault().logError(e.getMessage(), e);
 				return null;
@@ -149,14 +162,14 @@ class CompletionASTVistor extends ASTVisitor {
 
 		final List<ASTNode> arguments = argumentSupplier.get();
 		final List<ITypeBinding> parameters = parameterSupplier.apply(binding);
-		final List<IMethodBinding> overloads = searchInOverloadMethods ? findFromOverloaded(binding, containerType) : Collections.emptyList();
-		boolean checkInOverloads =!overloads.isEmpty();
+		final List<IMethodBinding> overloads = searchInOverloadMethods ? findFromOverloaded(binding, containerType)
+				: Collections.emptyList();
+		boolean checkInOverloads = !overloads.isEmpty();
 		if (arguments.isEmpty()) {
 			if (!parameters.isEmpty()) {
-				if(checkInOverloads) {
+				if (checkInOverloads) {
 					return overloads.stream().filter(m -> m.getParameterTypes().length > 0)
-							.map(m -> resolveType(m.getParameterTypes()[0]))
-							.collect(Collectors.toSet());
+							.map(m -> resolveType(m.getParameterTypes()[0])).collect(Collectors.toSet());
 				} else {
 					return Sets.newHashSet(resolveType(parameters.get(0)));
 				}
@@ -175,9 +188,11 @@ class CompletionASTVistor extends ASTVisitor {
 				}
 				lastType = resolveTypeBinding(astNode);
 			}
-			
-			// we might be trying to resolve the first argument while others are filled in like
-			// collect(<caret>, new X(), new Y()), but we want overloads if those other arguments
+
+			// we might be trying to resolve the first argument while others are filled in
+			// like
+			// collect(<caret>, new X(), new Y()), but we want overloads if those other
+			// arguments
 			// are not filled.
 			if (typeIndex == -1 && checkOffset < arguments.get(0).getStartPosition()
 					&& binding.getParameterTypes().length - arguments.size() == 1) {
@@ -191,17 +206,16 @@ class CompletionASTVistor extends ASTVisitor {
 				if (checkInOverloads) {
 					return overloads.stream().filter(m -> m.getParameterTypes().length >= pIndex + 1 || m.isVarargs())
 							.map(m -> {
-								// on statement line test(field$) we end up in this block even for the first parameter.
+								// on statement line test(field$) we end up in this block even for the first
+								// parameter.
 								// so we should handle is gracefully here.
 								if (m.isVarargs()) {
 									return resolveType(m.getParameterTypes()[m.getParameterTypes().length - 1]);
-								} else if (pIndex == 0 ||  isNonGenericEqual(m.getParameterTypes()[pIndex - 1], lType)) {
+								} else if (pIndex == 0 || isNonGenericEqual(m.getParameterTypes()[pIndex - 1], lType)) {
 									return resolveType(m.getParameterTypes()[pIndex]);
 								}
 								return null;
-							})
-							.filter(Predicates.notNull())
-							.collect(Collectors.toSet());
+							}).filter(Predicates.notNull()).collect(Collectors.toSet());
 				} else {
 					if ((pIndex > -1) && pIndex < parameters.size()) {
 						return Sets.newHashSet(parameters.get(typeIndex));
@@ -223,7 +237,7 @@ class CompletionASTVistor extends ASTVisitor {
 							|| Modifier.isPublic(m.getModifiers()));
 		}).collect(Collectors.toList());
 	}
-	
+
 	private ITypeBinding resolveTypeBinding(ASTNode node) {
 		if (node instanceof Expression) {
 			return ((Expression) node).resolveTypeBinding();
@@ -238,50 +252,55 @@ class CompletionASTVistor extends ASTVisitor {
 	public Set<IType> getExpectedTypes() {
 		return typeEntries.stream().map(Entry::getValue).collect(Collectors.toSet());
 	}
-	
+
 	public Set<ITypeBinding> getExpectedTypeBindings() {
 		return typeEntries.stream().map(Entry::getKey).collect(Collectors.toSet());
 	}
 
 	public IType getExpectedType() {
-		Optional<Entry<ITypeBinding,IType>> first = typeEntries.stream().findFirst();
+		Optional<Entry<ITypeBinding, IType>> first = typeEntries.stream().findFirst();
 		if (first.isPresent()) {
 			return first.get().getValue();
 		}
 		return null;
 	}
-	
+
 	public ITypeBinding getExpectedTypeBinding() {
-		Optional<Entry<ITypeBinding,IType>> first = typeEntries.stream().findFirst();
+		Optional<Entry<ITypeBinding, IType>> first = typeEntries.stream().findFirst();
 		if (first.isPresent()) {
 			return first.get().getKey();
 		}
 		return null;
 	}
 
-	
 	public Set<Entry<ITypeBinding, IType>> getExpectedTypeEntries() {
 		return typeEntries;
 	}
-	
-	public boolean isNonGenericEqual(ITypeBinding left, ITypeBinding right) {
-		 String leftName = Optional.ofNullable(left).map(ITypeBinding::getQualifiedName).map(this::genericErasure).orElse("");
-		 String rightName = Optional.ofNullable(right).map(ITypeBinding::getQualifiedName).map(this::genericErasure).orElse("");
-		 return leftName.equals(rightName);
+
+	public boolean isInsideLambda() {
+		return insideLambda;
 	}
-	
+
+	public boolean isNonGenericEqual(ITypeBinding left, ITypeBinding right) {
+		String leftName = Optional.ofNullable(left).map(ITypeBinding::getQualifiedName).map(this::genericErasure)
+				.orElse("");
+		String rightName = Optional.ofNullable(right).map(ITypeBinding::getQualifiedName).map(this::genericErasure)
+				.orElse("");
+		return leftName.equals(rightName);
+	}
+
 	private String genericErasure(String fqn) {
 		int i = fqn.indexOf("<");
-		if(i > -1) {
+		if (i > -1) {
 			return fqn.substring(0, i);
 		}
 		return fqn;
 	}
-	
+
 	private ITypeBinding getDeclaringType(ASTNode node) {
 		ASTNode n = node.getParent();
-		while(n != null) {
-			if(n instanceof TypeDeclaration) {
+		while (n != null) {
+			if (n instanceof TypeDeclaration) {
 				return ((TypeDeclaration) n).resolveBinding();
 			}
 			n = n.getParent();
@@ -289,4 +308,35 @@ class CompletionASTVistor extends ASTVisitor {
 		return null;
 	}
 
+	public static CompilationUnit createParsedUnitForCorrectedSource(String unitName, String source,
+			IJavaProject project, IProgressMonitor monitor) {
+		return createParsedUnitForCorrectedSource(unitName, source, project, false, monitor);
+	}
+
+	private static CompilationUnit createParsedUnitForCorrectedSource(String unitName, String source,
+			IJavaProject project,
+			boolean inRecovery, IProgressMonitor monitor) {
+		ASTParser parser = ASTParser.newParser(AST.JLS_Latest);
+		parser.setSource(source.toCharArray());
+		parser.setProject(project);
+		parser.setResolveBindings(true);
+		parser.setStatementsRecovery(true);
+		parser.setBindingsRecovery(true);
+		parser.setUnitName(unitName);
+		Map<String, String> options = project.getOptions(true);
+		options.remove(JavaCore.COMPILER_TASK_TAGS);
+		parser.setCompilerOptions(options);
+
+		CompilationUnit ast = (CompilationUnit) parser.createAST(monitor);
+
+		// recovery parsing since the normal java parser doesn't recover chained
+		// statements
+		return Stream.of(ast.getProblems())
+				.filter(p -> ((p.getID() & IProblem.MissingSemiColon) == IProblem.MissingSemiColon) && !inRecovery)
+				.map(p -> {
+					StringBuilder builder = new StringBuilder(source);
+					builder.insert(p.getSourceStart() + 1, ";");
+					return createParsedUnitForCorrectedSource(unitName, builder.toString(), project, true, monitor);
+		}).findFirst().orElse(ast);
+	}
 }

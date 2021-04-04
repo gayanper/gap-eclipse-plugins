@@ -74,10 +74,9 @@ public class ComputerTestBase {
 		return newCode;
 	}
 
-	protected String computeActual(ICompletionProposal proposal, ICompilationUnit cu, int completionIndex)
+	public String computeActual(ICompletionProposal proposal, ICompilationUnit cu, int completionIndex)
 			throws Exception {
 		proposal.apply(this.document);
 		return this.document.get();
 	}
-
 }

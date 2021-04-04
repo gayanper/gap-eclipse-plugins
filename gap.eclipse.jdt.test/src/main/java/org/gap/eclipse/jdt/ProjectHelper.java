@@ -14,8 +14,10 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.FileLocator;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.OperationCanceledException;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Status;
+import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.jdt.core.IClasspathAttribute;
 import org.eclipse.jdt.core.IClasspathEntry;
 import org.eclipse.jdt.core.ICompilationUnit;
@@ -24,6 +26,12 @@ import org.eclipse.jdt.core.IPackageFragment;
 import org.eclipse.jdt.core.IPackageFragmentRoot;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.JavaModelException;
+import org.eclipse.jdt.core.search.IJavaSearchConstants;
+import org.eclipse.jdt.core.search.IJavaSearchScope;
+import org.eclipse.jdt.core.search.SearchEngine;
+import org.eclipse.jdt.core.search.SearchPattern;
+import org.eclipse.jdt.core.search.TypeNameRequestor;
+import org.eclipse.jdt.internal.core.nd.indexer.Indexer;
 import org.eclipse.jdt.internal.ui.util.CoreUtility;
 
 @SuppressWarnings("restriction")
@@ -100,5 +108,38 @@ public class ProjectHelper {
 	
 	public static ICompilationUnit getCompilationUnit(IPackageFragment fragment, StringBuilder builder, String name) throws JavaModelException {
 		return fragment.createCompilationUnit(name, builder.toString().replace("$", ""), false, null);
+	}
+
+	public static void waitForAutoBuild() {
+		// copied from JDT test bench
+		boolean interrupted = false;
+		do {
+			try {
+				Job.getJobManager().join(ResourcesPlugin.FAMILY_AUTO_BUILD, null);
+				interrupted = false;
+			} catch (OperationCanceledException e) {
+				throw new AssertionError(String.format("Operation cancelled %s", e.getMessage()));
+			} catch (InterruptedException e) {
+				interrupted = true;
+			}
+		} while (interrupted);
+	}
+
+	public static void waitUntilIndexesReady() {
+		// copied from JDT test bench
+		SearchEngine engine = new SearchEngine();
+		IJavaSearchScope scope = SearchEngine.createWorkspaceScope();
+		try {
+			Indexer.getInstance().waitForIndex(null);
+			engine.searchAllTypeNames(null, SearchPattern.R_EXACT_MATCH, "!@$#!@".toCharArray(),
+					SearchPattern.R_PATTERN_MATCH | SearchPattern.R_CASE_SENSITIVE, IJavaSearchConstants.CLASS, scope,
+					new TypeNameRequestor() {
+						public void acceptType(int modifiers, char[] packageName, char[] simpleTypeName,
+								char[][] enclosingTypeNames, String path) {
+						}
+					}, IJavaSearchConstants.WAIT_UNTIL_READY_TO_SEARCH, null);
+		} catch (CoreException e) {
+			throw new AssertionError(String.format("Error occured waiting for indexing %s", e.getMessage()));
+		}
 	}
 }

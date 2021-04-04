@@ -33,7 +33,7 @@ class CodeRange {
 		} else if (node instanceof ClassInstanceCreation) {
 			return offset >= positionOfParentheses(() -> ((ClassInstanceCreation) node).getType().getLength());
 		}
-		return false;
+		return (start <= offset && end >= offset);
 	}
 
 	private int positionOfParentheses(IntSupplier nameLength) {
