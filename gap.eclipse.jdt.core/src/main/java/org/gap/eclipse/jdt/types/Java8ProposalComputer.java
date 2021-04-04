@@ -26,6 +26,7 @@ import org.eclipse.jdt.internal.codeassist.impl.AssistOptions;
 import org.eclipse.jdt.ui.text.java.IJavaCompletionProposalComputer;
 import org.eclipse.jdt.ui.text.java.JavaContentAssistInvocationContext;
 import org.eclipse.jface.text.contentassist.ICompletionProposal;
+import org.gap.eclipse.jdt.common.DistinctPredicate;
 import org.gap.eclipse.jdt.common.Log;
 
 @SuppressWarnings("restriction")
@@ -78,8 +79,9 @@ public class Java8ProposalComputer extends AbstractSmartProposalComputer impleme
 
 	private List<ICompletionProposal> computeJava8Proposals(Collection<? extends IBinding> bindings,
 			JavaContentAssistInvocationContext context) {
-		return bindings.stream().filter(b -> b instanceof ITypeBinding).map(ITypeBinding.class::cast)
-				.flatMap(this::functionalTypeMethod).flatMap(e -> toLambdaProposal(context, e))
+		return bindings.stream().filter(ITypeBinding.class::isInstance).map(ITypeBinding.class::cast)
+				.filter(DistinctPredicate.<ITypeBinding, String>distinct(ITypeBinding::getQualifiedName))
+				.map(this::functionalTypeMethod).flatMap(e -> toLambdaProposal(context, e))
 				.collect(Collectors.toList());
 	}
 
@@ -109,25 +111,23 @@ public class Java8ProposalComputer extends AbstractSmartProposalComputer impleme
 		}
 	}
 
-	private Stream<IMethodBinding> functionalTypeMethod(ITypeBinding binding) {
-		if (!binding.isInterface()) {
-			return Stream.empty();
-		}
+	private IMethodBinding functionalTypeMethod(ITypeBinding binding) {
+		if (binding.isInterface()) {
+			List<IMethodBinding> candidates = Stream.of(binding.getDeclaredMethods()).filter(m -> {
+				try {
+					return !Modifier.isStatic(m.getModifiers()) && !Modifier.isDefault(m.getModifiers())
+							&& notIgnoredMethod(m);
+				} catch (JavaModelException e) {
+					logError(e);
+					return false;
+				}
+			}).collect(Collectors.toList());
 
-		List<IMethodBinding> candidates = Stream.of(binding.getDeclaredMethods()).filter(m -> {
-			try {
-				return !Modifier.isStatic(m.getModifiers()) && !Modifier.isDefault(m.getModifiers())
-						&& notIgnoredMethod(m);
-			} catch (JavaModelException e) {
-				logError(e);
-				return false;
+			if (candidates.size() == 1) {
+				return candidates.get(0);
 			}
-		}).collect(Collectors.toList());
-
-		if (candidates.size() == 1) {
-			return candidates.stream();
 		}
-		return Stream.empty();
+		return null;
 	}
 
 	private boolean notIgnoredMethod(IMethodBinding method) throws JavaModelException {
