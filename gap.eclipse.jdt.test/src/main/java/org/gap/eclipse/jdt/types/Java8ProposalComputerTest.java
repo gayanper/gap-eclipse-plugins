@@ -124,9 +124,30 @@ public class Java8ProposalComputerTest extends ComputerTestBase {
 		ICompilationUnit cu = getCompilationUnit(pkg, code, "Java8.java");
 		List<ICompletionProposal> completions = computeCompletionProposals(cu, index);
 
-		String actual = computeActual(completions.stream().map(this::convert).sorted(this::compare).findFirst().get(),
+		String actual = computeActual(completions.get(0),
 				cu, index);
 		String expected = computeExpected(code, "$", "arg0 -> ");
+
+		assertEquals("(.) -> was not applied correctly", expected, actual);
+	}
+
+	@Test
+	public void compute_LambdaSuggestionWithoutParamsBlock_ShouldApply() throws Exception {
+		StringBuilder code = new StringBuilder();
+		code.append("package completion.test;\n");
+		code.append("import java.security.AccessController;\n");
+		code.append("public class Java8 {\n");
+		code.append("  public void foo() {\n");
+		code.append("    AccessController.doPrivileged($);\n");
+		code.append("  }\n");
+		code.append("}\n");
+
+		int index = getCompletionIndex(code);
+		ICompilationUnit cu = getCompilationUnit(pkg, code, "Java8.java");
+		List<ICompletionProposal> completions = computeCompletionProposals(cu, index);
+
+		String actual = computeActual(completions.get(1), cu, index);
+		String expected = computeExpected(code, "$", "() -> {}");
 
 		assertEquals("(.) -> was not applied correctly", expected, actual);
 	}
@@ -223,7 +244,7 @@ public class Java8ProposalComputerTest extends ComputerTestBase {
 	public void compute_UniqueLambdaSuggestion_On_OverloadedMethods() throws Exception {
 		StringBuilder code = new StringBuilder();
 		code.append("package completion.test;\n");
-		code.append("import java.util.concurrent.CompletableFuture;");
+		code.append("import java.util.concurrent.CompletableFuture;\n");
 		code.append("public class Java8 {\n");
 		code.append("  public void foo() {\n");
 		code.append("		CompletableFuture.supplyAsync($)");

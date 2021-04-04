@@ -75,7 +75,7 @@ public class LambdaCompletionProposal extends LazyJavaCompletionProposal {
 		completionString.append(" -> ");
 
 		if (!inline) {
-			completionString.append(" {}");
+			completionString.append("{}");
 		}
 
 		return completionString.toString();
@@ -97,5 +97,10 @@ public class LambdaCompletionProposal extends LazyJavaCompletionProposal {
 			model.addGroup(group);
 		}
 		return model;
+	}
+
+	@Override
+	protected boolean isSupportLinkMode() {
+		return parameterNames.length > 0;
 	}
 }

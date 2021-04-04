@@ -80,8 +80,9 @@ public class Java8ProposalComputer extends AbstractSmartProposalComputer impleme
 	private List<ICompletionProposal> computeJava8Proposals(Collection<? extends IBinding> bindings,
 			JavaContentAssistInvocationContext context) {
 		return bindings.stream().filter(ITypeBinding.class::isInstance).map(ITypeBinding.class::cast)
-				.filter(DistinctPredicate.<ITypeBinding, String>distinct(ITypeBinding::getQualifiedName))
-				.map(this::functionalTypeMethod).flatMap(e -> toLambdaProposal(context, e))
+				.map(this::functionalTypeMethod)
+				.filter(DistinctPredicate.<IMethodBinding, Integer>distinct(m -> m.getParameterTypes().length))
+				.flatMap(e -> toLambdaProposal(context, e))
 				.collect(Collectors.toList());
 	}
 
