@@ -21,7 +21,24 @@ jobs:
         with:
           java-version: 11
       - name: Build with Maven
-        run: mvn deploy -Pupload -DskipTests
-        env:
-          BINTRAY_API_KEY: ${{ secrets.BINTRAY_API_KEY }}
-          BINTRAY_USER: ${{ secrets.BINTRAY_USER }}
+        run: mvn package -DskipTests
+      - name: Deploy p2 site
+        if: ${{ github.ref == 'refs/heads/master' }}
+        run: |
+          git config user.email "workflows@egithub.com"
+          git config user.name "workflows@egithub.com"
+          mkdir -p ./p2/
+          cp -r ./gap.eclipse.plugins.site/target/repository ./p2/nightly
+          git add -f ./p2/nightly/*
+          git stash
+          git fetch --all
+          git checkout --track origin/gh-pages
+          git rm -rf --ignore-unmatch ./p2/nightly/*
+          git clean -df
+          git stash pop
+          git add -f ./p2/nightly/*
+          git commit -m "Deploy artifacts to p2 update site"
+          git push origin gh-pages
+          git switch master
+          echo "Deployed successfully"
+          
