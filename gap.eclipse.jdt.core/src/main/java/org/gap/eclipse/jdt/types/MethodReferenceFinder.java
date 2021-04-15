@@ -23,12 +23,12 @@ import org.gap.eclipse.jdt.common.Log;
 
 @SuppressWarnings("restriction")
 public class MethodReferenceFinder {
+	private static final String JAVA_OBJECT_SIG = "Ljava.lang.Object;";
 
 	public @NonNull Stream<Entry<IJavaElement, IMethod>> find(IMethodBinding binding,
-			@NonNull List<IJavaElement> visibleElements, @NonNull JavaContentAssistInvocationContext context)
+			@NonNull List<? extends IJavaElement> visibleElements, @NonNull JavaContentAssistInvocationContext context)
 			throws JavaModelException {
 		final boolean isInStaticContext = isInStaticContext(context.getCoreContext().getEnclosingElement());
-
 		return visibleElements.stream().filter(this::isAcceptableElement).flatMap(e -> {
 			try {
 				Stream<Entry<IJavaElement, IMethod>> methods;
@@ -51,14 +51,15 @@ public class MethodReferenceFinder {
 					methods = Stream.empty();
 				}
 
-				return methods.filter(me -> isStatic(me.getValue()) == isInStaticContext).filter(m -> {
+				return methods.filter(m -> {
 					try {
 						return Methods.notIgnoredMethod(m.getValue());
 					} catch (JavaModelException ex) {
 						Log.error(ex);
 						return false;
 					}
-				}).filter(me -> isMatchingMethod(binding, me.getValue()));
+				}).filter(me -> isStatic(me.getValue()) || isStatic(me.getValue()) == isInStaticContext)
+						.filter(me -> isMatchingMethod(binding, me.getValue()));
 			} catch (JavaModelException ex) {
 				Log.error(ex);
 			}
@@ -99,12 +100,17 @@ public class MethodReferenceFinder {
 
 	private boolean isMatchingMethod(IMethodBinding binding, IMethod m) {
 		try {
-			if(binding.getParameterTypes().length != m.getParameters().length) {
+			if (binding.getParameterTypes().length != m.getParameters().length) {
 				return false;
 			}
-			
-			for(int i = 0; i < binding.getParameterTypes().length; i++) {
+
+			for (int i = 0; i < binding.getParameterTypes().length; i++) {
 				ITypeBinding tb = binding.getParameterTypes()[i];
+
+				if (JAVA_OBJECT_SIG.equals(m.getParameterTypes()[i])) {
+					continue;
+				}
+
 				if (tb.isWildcardType() && tb.isUpperbound() && !tb.getBound().getName()
 						.equals(Signature.getSignatureSimpleName(m.getParameterTypes()[i]))) {
 					return false;

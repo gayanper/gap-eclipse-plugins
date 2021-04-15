@@ -87,7 +87,8 @@ public class Java8ProposalComputer_StreamTest extends ComputerTestBase {
 
 		List<String> expected = Arrays.asList("(.) ->", "(.) -> {}");
 
-		List<String> actual = completions.stream().map(c -> c.getDisplayString()).collect(Collectors.toList());
+		List<String> actual = completions.stream().map(this::convert).sorted(this::compare)
+				.map(c -> c.getDisplayString()).limit(2).collect(Collectors.toList());
 		assertEquals(actual.toString(), expected, actual);
 	}
 

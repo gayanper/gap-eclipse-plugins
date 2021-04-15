@@ -3,10 +3,12 @@ package org.gap.eclipse.jdt.types;
 import static org.gap.eclipse.jdt.ProjectHelper.getCompilationUnit;
 import static org.gap.eclipse.jdt.ProjectHelper.getCompletionIndex;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.eclipse.core.runtime.CoreException;
@@ -42,7 +44,8 @@ public class Java8ProposalComputerTest extends ComputerTestBase {
 		
 		int index = getCompletionIndex(code);
 		ICompilationUnit cu = getCompilationUnit(pkg, code, "Java8.java");
-		List<ICompletionProposal> completions = computeCompletionProposals(cu, index);
+		List<ICompletionProposal> completions = computeCompletionProposals(cu, index).stream().map(this::convert)
+				.sorted(this::compare).limit(2).collect(Collectors.toList());
 		
 		List<String> expected = Arrays.asList("(.) ->", "(.) -> {}");
 		
@@ -76,7 +79,7 @@ public class Java8ProposalComputerTest extends ComputerTestBase {
 		List<ICompletionProposal> completions = computeCompletionProposals(cu, index);
 
 		List<String> expected = Arrays.asList("(.) ->", "(.) -> {}", "this::isEmptyPub", "this::isEmptyProt",
-				"this::isEmpty");
+				"this::isEmpty", "Objects::isNull", "Objects::nonNull");
 
 		List<String> actual = completions.stream().map(this::convert).sorted(this::compare)
 				.map(c -> c.getDisplayString()).collect(Collectors.toList());
@@ -109,7 +112,7 @@ public class Java8ProposalComputerTest extends ComputerTestBase {
 	}
 
 	@Test
-	public void compute_LambdaSuggestion_ShouldApply() throws Exception {
+	public void compute_LambdaSuggestion_OnPredicate_SuggestObjects() throws Exception {
 		StringBuilder code = new StringBuilder();
 		code.append("package completion.test;\n");
 		code.append("public class Java8 {\n");
@@ -124,8 +127,32 @@ public class Java8ProposalComputerTest extends ComputerTestBase {
 		ICompilationUnit cu = getCompilationUnit(pkg, code, "Java8.java");
 		List<ICompletionProposal> completions = computeCompletionProposals(cu, index);
 
-		String actual = computeActual(completions.get(0),
-				cu, index);
+		List<String> expected = Arrays.asList("(.) ->", "(.) -> {}", "Objects::isNull", "Objects::nonNull");
+		List<String> actual = completions.stream().map(this::convert).sorted(this::compare)
+				.map(c -> c.getDisplayString()).collect(Collectors.toList());
+		assertEquals(actual.toString(), expected, actual);
+	}
+
+	@Test
+	public void compute_LambdaSuggestion_ShouldApply() throws Exception {
+		StringBuilder code = new StringBuilder();
+		code.append("package completion.test;\n");
+		code.append("public class Java8 {\n");
+		code.append("  public void test(java.util.function.Predicate<String> p) {\n");
+		code.append("  }\n");
+		code.append("  public void foo() {\n");
+		code.append("    test($)\n");
+		code.append("  }\n");
+		code.append("}\n");
+
+		int index = getCompletionIndex(code);
+		ICompilationUnit cu = getCompilationUnit(pkg, code, "Java8.java");
+		Optional<LazyJavaCompletionProposal> completion = computeCompletionProposals(cu, index).stream()
+				.map(this::convert).sorted(this::compare).findFirst();
+
+		assertTrue("No completion found", completion.isPresent());
+
+		String actual = computeActual(completion.get(), cu, index);
 		String expected = computeExpected(code, "$", "arg0 -> ");
 
 		assertEquals("(.) -> was not applied correctly", expected, actual);
