@@ -43,13 +43,24 @@ public class ComputerTestBase {
 		JavaProjectHelper.delete(project);
 	}
 
-	protected List<ICompletionProposal> computeCompletionProposals(ICompilationUnit cu, int completionIndex) throws Exception {
+	protected List<ICompletionProposal> computeCompletionProposals(ICompilationUnit cu, int completionIndex)
+			throws Exception {
+		return computeCompletionProposals(cu, completionIndex, -1);
+
+	}
+
+	protected List<ICompletionProposal> computeCompletionProposals(ICompilationUnit cu, int completionIndex,
+			int selLen) throws Exception {
 		IEditorPart editor= EditorUtility.openInEditor(cu);
 		ITextViewer viewer= new TextViewer(editor.getSite().getShell(), SWT.NONE);
 		this.document = new Document(cu.getSource());
 		viewer.setDocument(document);
+		if (selLen > 0) {
+			viewer.setSelectedRange(completionIndex - selLen, selLen);
+		} else {
+			viewer.setSelectedRange(completionIndex, 0);
+		}
 		JavaContentAssistInvocationContext ctx= new JavaContentAssistInvocationContext(viewer, completionIndex, editor);
-		viewer.setSelectedRange(completionIndex, 0);
 	
 		return this.proposalComputer.computeCompletionProposals(ctx, null);
 	}

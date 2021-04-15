@@ -81,6 +81,7 @@ public class Java8ProposalComputer extends AbstractSmartProposalComputer impleme
 			JavaContentAssistInvocationContext context) {
 		return bindings.stream().filter(ITypeBinding.class::isInstance).map(ITypeBinding.class::cast)
 				.map(this::functionalTypeMethod)
+				.filter(Objects::nonNull)
 				.filter(DistinctPredicate.<IMethodBinding, Integer>distinct(m -> m.getParameterTypes().length))
 				.flatMap(e -> toLambdaProposal(context, e))
 				.collect(Collectors.toList());

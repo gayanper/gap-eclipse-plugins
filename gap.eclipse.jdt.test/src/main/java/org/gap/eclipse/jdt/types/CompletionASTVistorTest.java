@@ -225,6 +225,92 @@ public class CompletionASTVistorTest {
 	}
 
 	@Test
+	public void getExpectedTypes_OnOverloadsWithVarArgs_OnFirstParameterWithToken_ReturnExpectedTypes()
+			throws Exception {
+		StringBuilder code = new StringBuilder();
+		code.append("package completion.test;\n");
+		code.append("public class ASTFileP1 {\n");
+		code.append("  public String test(java.util.Set<String> list, Integer... ints) {\n");
+		code.append("  	return null;\n");
+		code.append("  }\n");
+		code.append("  public String test(java.util.List<String> list) {\n");
+		code.append("  	return null;\n");
+		code.append("  }\n");
+		code.append("  public String foo() {\n");
+		code.append("  	return test(null$);\n");
+		code.append("  }\n");
+		code.append("}\n");
+
+		int index = getCompletionIndex(code);
+		ICompilationUnit cu = getCompilationUnit(pkg, code, "ASTFile.java");
+
+		CompletionASTVistor visitor = getVisitedVistor(cu, index, 4);
+
+		assertNotNull("Expected Type is null", visitor.getExpectedType());
+		assertEquals("Expected two types", 2, visitor.getExpectedTypes().size());
+		assertTrue("Expected String and List as types",
+				visitor.getExpectedTypes().stream().allMatch(t -> t.getFullyQualifiedName().equals("java.util.Set")
+						|| t.getFullyQualifiedName().equals("java.util.List")));
+	}
+
+	@Test
+	public void getExpectedTypes_OnOverloadsWithVarArgs_OnSecondParameterWithToken_ReturnExpectedTypes()
+			throws Exception {
+		StringBuilder code = new StringBuilder();
+		code.append("package completion.test;\n");
+		code.append("public class ASTFileP1 {\n");
+		code.append("  public String test(java.util.Set<String> list, Integer... ints) {\n");
+		code.append("  	return null;\n");
+		code.append("  }\n");
+		code.append("  public String test(java.util.List<String> list) {\n");
+		code.append("  	return null;\n");
+		code.append("  }\n");
+		code.append("  public String foo() {\n");
+		code.append("  	return test(new java.util.ArrayList(),null$);\n");
+		code.append("  }\n");
+		code.append("}\n");
+
+		int index = getCompletionIndex(code);
+		ICompilationUnit cu = getCompilationUnit(pkg, code, "ASTFile.java");
+
+		CompletionASTVistor visitor = getVisitedVistor(cu, index, 4);
+
+		assertNotNull("Expected Type is null", visitor.getExpectedType());
+		assertEquals("Expected two types", 1, visitor.getExpectedTypes().size());
+		assertTrue("Expected String and List as types",
+				visitor.getExpectedTypes().stream()
+						.allMatch(t -> t.getFullyQualifiedName().equals("java.lang.Integer")));
+	}
+
+	@Test
+	public void getExpectedTypes_OnOverloadsWithVarArgs_OnSecondParameterSecondVarArgValue_ReturnExpectedTypes()
+			throws Exception {
+		StringBuilder code = new StringBuilder();
+		code.append("package completion.test;\n");
+		code.append("public class ASTFileP1 {\n");
+		code.append("  public String test(java.util.Set<String> list, Integer... ints) {\n");
+		code.append("  	return null;\n");
+		code.append("  }\n");
+		code.append("  public String test(java.util.List<String> list) {\n");
+		code.append("  	return null;\n");
+		code.append("  }\n");
+		code.append("  public String foo() {\n");
+		code.append("  	return test(new java.util.ArrayList(),1,$);\n");
+		code.append("  }\n");
+		code.append("}\n");
+
+		int index = getCompletionIndex(code);
+		ICompilationUnit cu = getCompilationUnit(pkg, code, "ASTFile.java");
+
+		CompletionASTVistor visitor = getVisitedVistor(cu, index, 4);
+
+		assertNotNull("Expected Type is null", visitor.getExpectedType());
+		assertEquals("Expected two types", 1, visitor.getExpectedTypes().size());
+		assertTrue("Expected String and List as types", visitor.getExpectedTypes().stream()
+				.allMatch(t -> t.getFullyQualifiedName().equals("java.lang.Integer")));
+	}
+
+	@Test
 	public void getExpectedTypes_OnOverloads_OnFirstParameter2_ReturnExpectedTypes() throws Exception {
 		StringBuilder code = new StringBuilder();
 		code.append("package completion.test;\n");
@@ -386,10 +472,65 @@ public class CompletionASTVistorTest {
 		assertTrue("Expected Types are not empty", visitor.getExpectedTypes().isEmpty());
 	}
 
+	@Test
+	public void getExpectedTypes_VarArgsFirstValue_ExpectCorrectType() throws Exception {
+		StringBuilder code = new StringBuilder();
+		code.append("package completion.test;\n");
+		code.append("public class ASTFile {\n");
+		code.append("  public String foo() {\n");
+		code.append("		boo($);\n");
+		code.append("  }\n");
+		code.append("  public String boo(Integer ... ints) {\n");
+		code.append("  }\n");
+		code.append("}\n");
+
+		int index = getCompletionIndex(code);
+		ICompilationUnit cu = getCompilationUnit(pkg, code, "ASTFile.java");
+
+		CompletionASTVistor visitor = getVisitedVistor(cu, index);
+
+		assertNotNull("Expected Type is null", visitor.getExpectedType());
+		assertEquals("Expected two types", 1, visitor.getExpectedTypes().size());
+		assertTrue("Expected Integer as type", visitor.getExpectedTypes().stream()
+				.allMatch(t -> t.getFullyQualifiedName().equals("java.lang.Integer")));
+	}
+
+	@Test
+	public void getExpectedTypes_VarArgsSecondValue_ExpectCorrectType() throws Exception {
+		StringBuilder code = new StringBuilder();
+		code.append("package completion.test;\n");
+		code.append("public class ASTFile {\n");
+		code.append("  public String foo() {\n");
+		code.append("		boo(1, $);\n");
+		code.append("  }\n");
+		code.append("  public String boo(Integer ... ints) {\n");
+		code.append("  }\n");
+		code.append("}\n");
+
+		int index = getCompletionIndex(code);
+		ICompilationUnit cu = getCompilationUnit(pkg, code, "ASTFile.java");
+
+		CompletionASTVistor visitor = getVisitedVistor(cu, index);
+
+		assertNotNull("Expected Type is null", visitor.getExpectedType());
+		assertEquals("Expected two types", 1, visitor.getExpectedTypes().size());
+		assertTrue("Expected Integer as type", visitor.getExpectedTypes().stream()
+				.allMatch(t -> t.getFullyQualifiedName().equals("java.lang.Integer")));
+	}
 	private CompletionASTVistor getVisitedVistor(ICompilationUnit cu, int index) throws Exception {
+		return this.getVisitedVistor(cu, index, -1);
+	}
+
+	private CompletionASTVistor getVisitedVistor(ICompilationUnit cu, int index, int selLen) throws Exception {
 		IEditorPart editor = EditorUtility.openInEditor(cu);
 		ITextViewer viewer = new TextViewer(editor.getSite().getShell(), SWT.NONE);
 		viewer.setDocument(new Document(cu.getSource()));
+		if (selLen > 0) {
+			viewer.setSelectedRange(index - selLen, selLen);
+		} else {
+			viewer.setSelectedRange(index, 0);
+		}
+
 		JavaContentAssistInvocationContext ctx = new JavaContentAssistInvocationContext(viewer, index, editor);
 		CompletionASTVistor visitor = new CompletionASTVistor(ctx);
 

@@ -209,10 +209,11 @@ class CompletionASTVistor extends ASTVisitor {
 								// on statement line test(field$) we end up in this block even for the first
 								// parameter.
 								// so we should handle is gracefully here.
-								if (m.isVarargs()) {
-									return resolveType(m.getParameterTypes()[m.getParameterTypes().length - 1]);
-								} else if (pIndex == 0 || isNonGenericEqual(m.getParameterTypes()[pIndex - 1], lType)) {
-									return resolveType(m.getParameterTypes()[pIndex]);
+								ITypeBinding[] parameterTypes = m.getParameterTypes();
+								if (m.isVarargs() && pIndex >= parameterTypes.length - 1) {
+									return resolveType(parameterTypes[parameterTypes.length - 1]);
+								} else if (pIndex == 0 || isNonGenericEqual(parameterTypes[pIndex - 1], lType)) {
+									return resolveType(parameterTypes[pIndex]);
 								}
 								return null;
 							}).filter(Predicates.notNull()).collect(Collectors.toSet());
