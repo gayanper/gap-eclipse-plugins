@@ -39,4 +39,4 @@ This feature will introduce a new marker which will mark any method recursion ex
 
   
 ## Update site
-[https://gayanper.github.io/gap-eclipse-plugins/p2/nightly//](https://gayanper.github.io/gap-eclipse-plugins/p2/nightly/)
+[https://gayanper.github.io/gap-eclipse-plugins/p2/nightly/](https://gayanper.github.io/gap-eclipse-plugins/p2/nightly/)
