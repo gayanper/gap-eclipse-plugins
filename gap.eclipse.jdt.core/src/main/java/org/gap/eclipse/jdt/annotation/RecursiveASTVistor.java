@@ -22,7 +22,7 @@ class RecursiveASTVistor extends ASTVisitor {
 
 	@Override
 	public boolean visit(MethodDeclaration node) {
-		currentMethod = Optional.of(node.resolveBinding());
+		currentMethod = Optional.ofNullable(node.resolveBinding());
 		return super.visit(node);
 	}
 
