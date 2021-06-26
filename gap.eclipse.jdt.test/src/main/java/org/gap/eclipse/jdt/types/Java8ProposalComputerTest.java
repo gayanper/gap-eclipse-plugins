@@ -310,6 +310,29 @@ public class Java8ProposalComputerTest extends ComputerTestBase {
 		assertEquals(String.format("No type is expected : %s", actual.toString()), 0, actual.size());
 	}
 
+	@Test
+	public void compute_WhenFirstOverloadedMethodHasNoParameters_ExpectForOverloadedMethodParameters()
+			throws Exception {
+		StringBuilder code = new StringBuilder();
+		code.append("package completion.test;\n");
+		code.append("import java.util.stream.Stream;");
+		code.append("public class Java8 {\n");
+		code.append("  public static void foo() {\n");
+		code.append("		Stream.of(1,2,3).sorted($);\n");
+		code.append("  }\n");
+		code.append("}\n");
+
+		int index = getCompletionIndex(code);
+		ICompilationUnit cu = getCompilationUnit(pkg, code, "Java8.java");
+		List<ICompletionProposal> completions = computeCompletionProposals(cu, index, 4);
+
+		List<String> expected = Arrays.asList("(..) ->", "(..) -> {}");
+
+		List<String> actual = completions.stream().map(this::convert).sorted(this::compare)
+				.map(c -> c.getDisplayString()).collect(Collectors.toList());
+		assertEquals(actual.toString(), expected, actual);
+	}
+
 	private LazyJavaCompletionProposal convert(ICompletionProposal proposal) {
 		return (LazyJavaCompletionProposal) proposal;
 	}

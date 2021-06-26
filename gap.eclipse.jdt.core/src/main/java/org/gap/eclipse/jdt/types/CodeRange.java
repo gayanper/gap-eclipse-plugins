@@ -29,7 +29,10 @@ class CodeRange {
 	// method.
 	private boolean withInValidRegion(int offset) {
 		if (node instanceof MethodInvocation) {
-			return offset >= positionOfParentheses(() -> ((MethodInvocation) node).getName().getLength());
+			return offset >= positionOfParentheses(() -> {
+				MethodInvocation mi = (MethodInvocation) node;
+				return mi.getName().getLength() + ((mi.getExpression() != null) ? mi.getExpression().getLength() : 0);
+			});
 		} else if (node instanceof ClassInstanceCreation) {
 			return offset >= positionOfParentheses(() -> ((ClassInstanceCreation) node).getType().getLength());
 		}

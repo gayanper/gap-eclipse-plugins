@@ -166,13 +166,11 @@ class CompletionASTVistor extends ASTVisitor {
 				: Collections.emptyList();
 		boolean checkInOverloads = !overloads.isEmpty();
 		if (arguments.isEmpty()) {
-			if (!parameters.isEmpty()) {
-				if (checkInOverloads) {
-					return overloads.stream().filter(m -> m.getParameterTypes().length > 0)
-							.map(m -> resolveType(m.getParameterTypes()[0])).collect(Collectors.toSet());
-				} else {
-					return Sets.newHashSet(resolveType(parameters.get(0)));
-				}
+			if (checkInOverloads) {
+				return overloads.stream().filter(m -> m.getParameterTypes().length > 0)
+						.map(m -> resolveType(m.getParameterTypes()[0])).collect(Collectors.toSet());
+			} else if (!parameters.isEmpty()) {
+				return Sets.newHashSet(resolveType(parameters.get(0)));
 			}
 		} else {
 			int typeIndex = -1;
