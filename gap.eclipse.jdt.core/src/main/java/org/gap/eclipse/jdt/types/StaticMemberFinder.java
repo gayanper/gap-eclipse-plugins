@@ -32,6 +32,9 @@ import org.eclipse.jdt.core.search.SearchParticipant;
 import org.eclipse.jdt.core.search.SearchPattern;
 import org.eclipse.jdt.core.search.SearchRequestor;
 import org.eclipse.jdt.internal.core.search.JavaSearchScope;
+import org.eclipse.jdt.internal.core.search.indexing.QualifierQuery;
+import org.eclipse.jdt.internal.core.search.indexing.QualifierQuery.QueryCategory;
+import org.eclipse.jdt.internal.core.search.matching.MatchLocator;
 import org.eclipse.jdt.ui.text.java.JavaContentAssistInvocationContext;
 import org.eclipse.jface.text.contentassist.ICompletionProposal;
 import org.gap.eclipse.jdt.CorePlugin;
@@ -49,20 +52,16 @@ public class StaticMemberFinder {
 
 	public Stream<ICompletionProposal> find(final List<String> expectedTypeFQNs,
 			JavaContentAssistInvocationContext context, IProgressMonitor monitor, Duration timeout) {
-		boolean extendedSearch = context.getCoreContext().getToken() != null
-				&& context.getCoreContext().getToken().length > 0;
 		boolean expandSubTypes = false;		
 	
 		if (lastInvocation.canPerformSecondarySearch(context)) {
 			if(!lastInvocation.wasLastSecondarySearch()) {
 				cachedSearchParticipant.resetCache();
 			}
-			
-			extendedSearch = true;
 			expandSubTypes = true;
 		}
 	
-		return performSearch(expectedTypeFQNs, context, monitor, timeout, extendedSearch, expandSubTypes)
+		return performSearch(expectedTypeFQNs, context, monitor, timeout, expandSubTypes)
 				.map(m -> toCompletionProposal(m, context, monitor)).filter(Predicates.notNull());
 	}
 
@@ -164,7 +163,7 @@ public class StaticMemberFinder {
 
 	@SuppressWarnings("deprecation")
 	private Stream<IMember> performSearch(List<String> typeFQNs, JavaContentAssistInvocationContext context,
-			IProgressMonitor monitor, Duration timeout, boolean extendedSearch, boolean expandSubTypes) {
+			IProgressMonitor monitor, Duration timeout, boolean expandSubTypes) {
 		final SearchJobTracker searchJobTracker = new SearchJobTracker();
 		final SearchEngine engine = new SearchEngine();
 
@@ -179,7 +178,8 @@ public class StaticMemberFinder {
 				}
 				
 				SearchPattern pattern = null;
-				int searchInMask = JavaSearchScope.SYSTEM_LIBRARIES | JavaSearchScope.SOURCES;
+				int searchInMask = JavaSearchScope.SYSTEM_LIBRARIES | JavaSearchScope.SOURCES
+						| JavaSearchScope.REFERENCED_PROJECTS | JavaSearchScope.APPLICATION_LIBRARIES;
 
 				final List<String> typeSigs = expectedTypeFQNs.isEmpty() ? Collections.emptyList()
 						: expectedTypeFQNs.stream().map(f -> Signature.createTypeSignature(f, true))
@@ -189,14 +189,14 @@ public class StaticMemberFinder {
 						SearchPattern p = SearchPattern.createPattern(fqn, IJavaSearchConstants.TYPE,
 								IJavaSearchConstants.RETURN_TYPE_REFERENCE,
 								SearchPattern.R_CASE_SENSITIVE | SearchPattern.R_ERASURE_MATCH);
+						MatchLocator.setIndexQualifierQuery(p,
+								QualifierQuery.encodeQuery(new QueryCategory[] { QueryCategory.REF },
+										Signature.getSimpleName(fqn).toCharArray(), fqn.toCharArray()));
+						
 						if(p != null) {
 							pattern = pattern == null ? p : SearchPattern.createOrPattern(p, pattern);
 						}
 					}
-				}
-
-				if (extendedSearch) {
-					searchInMask = searchInMask | JavaSearchScope.REFERENCED_PROJECTS | JavaSearchScope.APPLICATION_LIBRARIES;
 				}
 
 				if (context.getCoreContext().getToken() != null && context.getCoreContext().getToken().length > 0) {
