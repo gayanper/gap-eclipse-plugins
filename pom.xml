@@ -19,6 +19,8 @@
     <tycho.extras.version>2.5.0</tycho.extras.version>
     <tycho.test.platformArgs/>
     <tycho.test.jvmArgs>-Xmx512m</tycho.test.jvmArgs>
+    <maven.compiler.source>11</maven.compiler.source>
+    <maven.compiler.target>11</maven.compiler.source>
 
   </properties>
 
