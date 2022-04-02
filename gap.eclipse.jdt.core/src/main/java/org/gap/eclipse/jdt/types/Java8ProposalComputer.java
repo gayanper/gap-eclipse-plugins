@@ -13,6 +13,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.Platform;
 import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IMethod;
@@ -28,6 +29,9 @@ import org.eclipse.jdt.ui.text.java.JavaContentAssistInvocationContext;
 import org.eclipse.jface.text.contentassist.ICompletionProposal;
 import org.gap.eclipse.jdt.common.DistinctPredicate;
 import org.gap.eclipse.jdt.common.Log;
+import org.osgi.framework.Version;
+
+import com.google.common.base.Preconditions;
 
 @SuppressWarnings("restriction")
 public class Java8ProposalComputer extends AbstractSmartProposalComputer implements IJavaCompletionProposalComputer {
@@ -37,10 +41,15 @@ public class Java8ProposalComputer extends AbstractSmartProposalComputer impleme
 
 	private AssistOptions assistOptions;
 
+	private boolean enableLambda;
+
+	private static final Version VERSION_FOR_LAMBDA = new Version(4, 22, 0);
+
 	public Java8ProposalComputer() {
 		this.methodSignaturesToIgnore = List.of(Map.entry("equals", "(Ljava/lang/Object;)Z"), Map.entry("wait", "()V"),
 				Map.entry("wait", "(JI)V"), Map.entry("wait", "(J)V"));
 		this.methodReferenceFinder = new MethodReferenceFinder();
+		enableLambda = Platform.getBundle("org.eclipse.platform").getVersion().compareTo(VERSION_FOR_LAMBDA) <= 0;
 	}
 
 	@Override
@@ -106,7 +115,8 @@ public class Java8ProposalComputer extends AbstractSmartProposalComputer impleme
 					Log.error(ex);
 					return null;
 				}
-			}).filter(Objects::nonNull), Proposals.toLambdaProposal((IMethod) binding.getJavaElement(), context));
+			}).filter(Objects::nonNull), 
+					enableLambda ? Proposals.toLambdaProposal((IMethod) binding.getJavaElement(), context): Stream.empty());
 		} catch (JavaModelException e) {
 			logError(e);
 			return Stream.empty();
