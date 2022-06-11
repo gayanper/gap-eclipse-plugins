@@ -131,15 +131,6 @@
       </hyperlinkDetector>
    </extension>
    <extension
-         point="org.eclipse.jdt.ui.quickAssistProcessors">
-      <quickAssistProcessor
-            class="org.gap.eclipse.jdt.quickfixes.StringFormatAsistProcessor"
-            id="gap.eclipse.jdt.core.stringFormat"
-            name="String Format Asist Processor"
-            requiredSourceLevel="1.5">
-      </quickAssistProcessor>
-   </extension>
-   <extension
          point="org.eclipse.ui.popupMenus">
       <viewerContribution
             id="org.eclipse.debug.ui.variablesView.popupMenu"
